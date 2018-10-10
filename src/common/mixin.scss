@@ -1,0 +1,43 @@
+@mixin center-flex{
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+}
+
+@mixin border-radius($radius:5px){
+    -webkit-border-radius: $radius;
+    border-radius: $radius;
+}
+
+@mixin text-end($line:2){
+    text-overflow: -o-ellipsis-lastline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp:$line;
+    -webkit-box-orient: vertical;
+}
+
+@mixin background-gradient($endcolor:#000000,$startcolor:#FFFFFF){
+    
+ background-image: -webkit-linear-gradient($startcolor, $endcolor);
+ background-image: -moz-linear-gradient($startcolor, $endcolor);
+ background-image: -o-linear-gradient($startcolor, $endcolor);
+ background-image: linear-gradient($startcolor, $endcolor);
+
+}
+@mixin background-blur($blur:5px){
+    filter: blur($blur);
+    -webkit-filter: blur($blur);
+    -moz-filter: blur($blur);
+    -ms-filter: blur($blur);
+    -o-filter: blur($blur);       
+}
+
+@mixin   border-bottom-grey{
+      border-bottom: 1px solid #EEE;
+}
+
+@mixin   list-padding{
+      padding: 5px 0 ;
+}

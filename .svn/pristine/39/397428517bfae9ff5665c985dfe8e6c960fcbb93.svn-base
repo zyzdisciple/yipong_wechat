@@ -1,0 +1,812 @@
+<template>
+  <div class="hello">
+    <div class="div-startbuttom" v-if="playernow" @click="playVideo">
+
+    </div>
+    <video @play="onPlayerPlay($event)" @pause="onPlayerPause($event)" id="my-video"
+           class="video-js vjs-big-play-centered" data-setup='{}' x5-video-player-fullscreen="true"
+           :playsinline="living" :webkit-playsinline="living" x-webkit-airplay="true" x5-video-player-type="h5"
+           x5-video-orientation="h5">
+
+    </video>
+    <chat-editor class="ed"
+                 v-show="liveData.LiveStreamStateId != 2"
+                 @confirmCharge="showMsg"
+                 @hideEditor="hideEditor"
+                 @toggle-input="toggleEditor"
+                 type="chatroom"
+                 :chatroomId="chatroomId"
+                 :liveId="liveData.Id"
+    ></chat-editor>
+    <div class="studio-nav">
+      <div class="studio-img">
+        <img :src="CustomerAvatarUrl" alt="" class="studioavater">
+      </div>
+      <div class="studio-details">
+        <h3>{{this.WorkRoomName}}</h3>
+        <div class="studionumber">
+          <img src="../assets/follow.png" alt="" class="studioavater">
+          <span class="likecount">{{this.FollowCount}}</span>
+          <img src="../assets/online.png" alt="" class="studioavater" v-show="liveData.LiveStreamStateId != 2">
+          <span class="likecount" v-show="liveData.LiveStreamStateId != 2">{{this.LookCount}}</span>
+        </div>
+      </div>
+      <div class="attention" @click="attention" v-if="isattion">
+        <a class="attention-button">关注</a>
+      </div>
+    </div>
+
+    <div @click="playVideo" v-show="liveData.LiveStreamStateId != 2">
+      <ChatList v-show="showChatMsgs" class="chat-list" type="chatroom" :chatroomId="chatroomId" :msglist="msglist"
+                @msgs-loaded="msgsLoaded"></ChatList>
+    </div>
+
+    <ModalPoirt ref="ModalPoirt">
+    </ModalPoirt>
+    <Modal ref="Modal" :text="text" confirmTitle="确定" cancleTitle="取消" confirmVisible="visible"
+           v-on:confirmClick="confirm()" v-on:cancleClick="cancel()"></Modal>
+    <Modal ref="ModalCharge" :text="text" confirmTitle="确定" cancleTitle="取消" confirmVisible="visible"
+           v-on:confirmClick="confirmCharge" v-on:cancleClick="cancleClick"></Modal>
+  </div>
+</template>
+
+<script>
+  import ChatList from './ChatList'
+  import ChatEditor from './ChatEditor'
+  import pageUtil from '../utils/page'
+  import axios from 'axios'
+  import qs from 'qs'
+  import {setStore, getStore} from '../store/mlocalstorge';
+  import Modal from '@/components/modal/Modal';
+  import ModalPoirt from '@/components/modal/ModalPoirt';
+  import {getWXPayInfo} from '../utils/WXPay'
+  import {Toast, MessageBox} from 'mint-ui';
+
+  export default {
+    components: {
+      ChatList, ChatEditor, Modal, ModalPoirt
+    },
+    name: 'hello',
+    data() {
+      return {
+        text: "",
+        uid: "",
+        sdktoken: "",
+        mChatroomId: "",
+        msg: 'Welcome to Your Vue.js App',
+        hlsPullUrl: "",
+        CustomerAvatarUrl: "",
+        WorkRoomName: "",
+        FollowCount: "",
+        LookCount: "0",
+        studioInfo: {},
+        myPlayer: null,
+        liveData: {LiveStreamStateId: 0},
+        payInfo: {},
+        isShowEditView: true,
+        ScoreSetting: 1,
+        userInfo: {},
+        screenWidth: document.body.clientWidth,
+        proit: false,
+        playernow: true,
+        isattion: true,
+        living: true,
+        timeInterval: '',
+        showChatMsgs: true,
+      }
+    },
+
+    beforeDestroy() {
+      this.myPlayer.release();
+      this.$store.dispatch("logout");
+      this.$store.commit("updateNim")
+      clearInterval(this.timeInterval);
+      this.$store.dispatch("resetChatroomSDK", null);
+    },
+    created() {
+      if (this.$route.params.islive == 0) {
+        this.living = false;
+      }
+    },
+
+    mounted() {
+      this.userInfo = getStore("userInfo");
+      const mId = this.$route.params.liveStreamId;
+      let paramsApply = {}
+      this.api.getMyPointsInfo(paramsApply).then(res => {
+        this.ScoreSetting = res.Data.ScoreSetting
+      })
+      this.doWithPlay();
+
+      //屏幕调整
+      const that = this
+      window.onresize = () => {
+        return (() => {
+          window.screenWidth = document.body.clientWidth
+          that.screenWidth = window.screenWidth
+        })()
+      }
+      //显示观众人数
+      this.api.getLiveStreamCustomerCount({Id: mId}).then(res => {
+        this.LookCount = res.Data;
+      })
+      //每10秒更新观众人数
+      this.timeInterval = setInterval(() => {
+        this.api.getLiveStreamCustomerCount({Id: mId}).then(res => {
+          this.LookCount = res.Data;
+        })
+      }, 10000);
+    },
+    updated() {
+
+    },
+    computed: {
+      chat() {
+
+      },
+      chatroomId() {
+        let chatroomId = this.$store.state.chatroomID
+        return chatroomId
+      },
+      msglist() {
+        let msgs = [];
+        let tempmsg = this.$store.state.currChatroomMsgs
+        for (let i = 0; i < tempmsg.length; i++) {
+
+          if (tempmsg[i].type === "text") {
+            msgs.push(tempmsg[i])
+          }
+
+        }
+        return msgs
+      },
+      getUserIcons() {
+        return this.$store.state.yipong;
+      },
+      newMsg() {
+        return this.$store.state.msgggg;
+      }
+
+    },
+    watch: {
+      screenWidth(val) {
+        if (!this.timer) {
+          this.screenWidth = val
+          this.timer = true
+          let that = this
+
+          if (window.orientation == 180 || window.orientation == 0) {
+            this.$refs.ModalPoirt.close();
+          }
+          if (window.orientation == 90 || window.orientation == -90) {
+            this.$refs.ModalPoirt.open();
+          }
+          setTimeout(function () {
+            this.text = that.screenWidth,
+              that.timer = false
+          }, 0)
+        }
+      },
+      newMsg(val) {
+        const msgggg = this.$store.state.msgggg;
+        if (msgggg[0] != undefined) {
+          if (msgggg[0].type === "custom") {
+            let content = JSON.parse(msgggg[0].content);
+            if (this.liveData.WorkRoom != null && (this.liveData.WorkRoom.CreateCustomerId == content.id || this.liveData.Id == content.id)) {
+
+              switch (content.type) {
+                case 4:
+
+                  const mId = this.$route.params.liveStreamId;
+                  const params = {
+                    "Id": mId
+                  };
+
+                  this.api.getLiveStreamById(params).then(res => {
+                    let data = res.Data;
+                    this.FollowCount = data.WorkRoom.FollowCount;
+                  });
+                  break;
+                case 3:
+                  this.text = "直播已经结束!";
+                  this.$refs.Modal.open();
+                  break;
+                case 2:
+                  this.text = "直播已恢复!";
+                  this.$refs.Modal.open();
+
+                  break;
+                case 1:
+                  this.myPlayer.pause();
+                  this.text = "直播已被禁用!";
+                  this.$refs.Modal.open();
+                  break;
+                case 0:
+                  this.text = "直播已被删除!";
+                  this.$refs.Modal.open();
+                  break;
+              }
+            }
+          }
+        }
+      },
+      getUserIcons(val) {
+        this.userInfo = getStore("userInfo");
+        const mId = this.$route.params.liveStreamId;
+
+        let paramsApply = {}
+        this.api.getMyPointsInfo(paramsApply).then(res => {
+          this.ScoreSetting = res.Data.ScoreSetting
+        })
+
+        const params = {
+          "Id": mId
+        };
+
+        this.api.getLiveStreamById(params).then(res => {
+          let data = res.Data;
+          if (data.LiveStreamStateId == 0) {
+            alert("直播尚未开始")
+            this.$router.go(-1);
+            return
+          }
+          this.liveData = data
+          this.studioInfo = data.WorkRoom;
+          this.hlsPullUrl = data.HlsPullUrl;
+          this.mChatroomId = data.WorkRoom.NetEaseRoomId;
+          if (data != undefined && data.WorkRoom != undefined && data.WorkRoom.Picture.Url != null) {
+            this.CustomerAvatarUrl = data.WorkRoom.Picture.Url;
+          }
+
+          if (data.LiveStreamStateId == 2) {
+            this.hlsPullUrl = data.NetEaseUrl;
+          } else {
+            let paramsrecord = {
+              "LiveStreamId": this.liveData.Id,
+              "CustomerId": this.userInfo.UserId,
+              "IsSpeak": false,
+            }
+            this.api.UpdateAudienceRecord(paramsrecord).then(res => {
+
+            })
+          }
+          this.$store.dispatch("updateChatroomAvatar", this.CustomerAvatarUrl);
+          this.WorkRoomName = data.WorkRoom.Name;
+          this.FollowCount = data.WorkRoom.FollowCount;
+          this.playLive(this.hlsPullUrl);
+
+
+          document.title = data.Title;
+          this.uid = this.userInfo.YunXinUserName;
+          this.sdktoken = this.userInfo.YunXinToken;
+          this.initSdk();
+          setTimeout(() => {
+            this.updateCount();
+          }, 10000)
+          this.$store.dispatch("getChatroomInfo");
+        });
+        setInterval(() => {
+          this.updateCount();
+        }, 15000);
+      }
+    },
+    methods: {
+      doWithPlay() {
+        //手机系统
+        let u = navigator.userAgent, app = navigator.appVersion;
+        let isAndroid = u.indexOf('Android') > -1 || u.indexOf('Linux') > -1; //g
+        let isIOS = !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/); //ios终端
+        if (isAndroid) {
+          this.playernow = true;
+        }
+        if (isIOS) {
+          this.playernow = false;
+        }
+
+        let myPlayer = neplayer('my-video', {
+          "width": window.screen.availWidth,
+          "height": window.screen.availHeight,
+          "controls": true,
+          errorDisplay: false,
+        }, () => {
+
+        });
+        this.myPlayer = myPlayer;
+
+        this.api.getLiveStreamById({Id: this.$route.params.liveStreamId}).then(res => {
+          let data = res.Data;
+          if (data.LiveStreamStateId == 0) {
+            alert("直播尚未开始")
+            this.$router.go(-1);
+            return
+          }
+          this.liveData = data
+          this.studioInfo = data.WorkRoom;
+          this.hlsPullUrl = data.HlsPullUrl;
+          this.mChatroomId = data.WorkRoom.NetEaseRoomId;
+          if (data != undefined && data.WorkRoom != undefined && data.WorkRoom.Picture.Url != null) {
+            this.CustomerAvatarUrl = data.WorkRoom.Picture.Url;
+          }
+          this.isattion = !this.studioInfo.IsFollowed
+          if (data.WorkRoom != undefined && this.userInfo.UserId == data.WorkRoom.CreateCustomerId) {
+            this.isattion = false;
+          }
+          if (data.LiveStreamStateId == 2) {
+            this.hlsPullUrl = data.NetEaseUrl;
+          } else {
+            let paramsrecord = {
+              "LiveStreamId": this.liveData.Id,
+              "CustomerId": this.userInfo.UserId,
+              "IsSpeak": false,
+            }
+            this.api.UpdateAudienceRecord(paramsrecord);
+          }
+          this.$store.dispatch("updateChatroomAvatar", this.CustomerAvatarUrl);
+          this.WorkRoomName = data.WorkRoom.Name;
+          this.FollowCount = data.WorkRoom.FollowCount;
+          this.playLive(this.hlsPullUrl);
+
+          document.title = data.Title;
+          if (this.userInfo && this.userInfo.YunXinUserName && this.userInfo.YunXinToken) {
+            this.uid = this.userInfo.YunXinUserName;
+            this.sdktoken = this.userInfo.YunXinToken;
+            this.initSdk();
+            this.$store.dispatch("getChatroomInfo");
+          }
+        });
+      },
+      onPlayerPlay(player) {
+        let u = navigator.userAgent, app = navigator.appVersion;
+        let isAndroid = u.indexOf('Android') > -1 || u.indexOf('Linux') > -1; //g
+        let isIOS = !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/); //ios终端
+        if (isAndroid) {
+          this.playernow = false;
+        }
+        if (isIOS) {
+          this.playernow = false;
+        }
+
+        this.playernow = false;
+      },
+      onPlayerPause(player) {
+        let u = navigator.userAgent, app = navigator.appVersion;
+        let isAndroid = u.indexOf('Android') > -1 || u.indexOf('Linux') > -1; //g
+        let isIOS = !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/); //ios终端
+        if (isAndroid) {
+          this.playernow = true;
+        }
+        if (isIOS) {
+          this.playernow = false;
+        }
+      },
+      confirm() {
+        if (this.text == "直播已恢复!") {
+          this.playVideo();
+        } else {
+          this.$router.go(-1);
+        }
+
+      },
+      cancel() {
+
+      },
+      cancleClick() {
+
+      },
+      confirmCharge() {
+        getWXPayInfo(this.liveData.SpeakExpense * 100 / this.ScoreSetting, () => {
+          //扣费
+          let chargeParms = {
+            "ChangeTypeId": 823,
+            "ScoreAmount": this.liveData.SpeakExpense,
+            "RefertoId": this.liveData.Id,
+          };
+          this.api.getLiveScorePay(chargeParms).then(res => {
+            if (res.ResultMessage != "Success") {
+              Toast(res.ResultMessage);
+            } else {
+              // 扣费成功
+              let payparams = {
+                "UserId": this.userInfo.UserId,
+                "LiveId": this.liveData.Id,
+              }
+              this.api.getCustomerPayInfo(payparams).then(res => {
+                this.payInfo = res.Data;
+                if (this.payInfo.IsPaySpeakExpense) {
+                }
+              });
+            }
+          });
+        }, (fail) => {
+          Toast("支付失败");
+        })
+      },
+      hideEditor() {
+
+      },
+      toggleEditor(newValue) {
+        this.showChatMsgs = !newValue;
+      },
+      attention() {
+
+        let params = {
+          "UserID": this.userInfo.UserId,
+          "WorkRoomId": this.studioInfo.Id,
+          "IsFollow": !this.studioInfo.IsFollowed,
+        }
+        this.api.FollowWorkRoom(params).then(res => {
+          Toast("关注成功");
+          this.isattion = false;
+          this.FollowCount++;
+
+          let content = {
+            "id": this.liveData.WorkRoom.CreateCustomerId,
+            "type": 4
+          }
+          const chatroom = this.$store.state.currChatroom
+          chatroom.sendCustomMsg({
+            content: JSON.stringify(content),
+          });
+
+          const mId = this.$route.params.liveStreamId;
+          const params = {
+            "Id": mId
+          };
+
+          this.api.getLiveStreamById(params).then(res => {
+            let data = res.Data;
+            this.FollowCount = data.WorkRoom.FollowCount;
+          });
+
+        }, error => {
+          Toast("关注失败");
+        })
+      },
+      playVideo() {
+        this.myPlayer.play();
+      },
+      msgsLoaded() {
+        pageUtil.scrollChatListDown()
+      },
+      showMsg() {
+        if ((this.liveData.ExpenseModeId == 1 || this.liveData.ExpenseModeId == 2) && this.liveData.SpeakExpense > 0) {
+          MessageBox.confirm('提问需要付费' + this.liveData.SpeakExpense + '元, 确定支付?').then(action => {
+            var params = {
+              changeTypeId: '2305',
+              paymentTypeId: '902',
+              amount: this.liveData.SpeakExpense,
+              reforToTypeId: '0',
+              referToId: this.liveData.Id,
+              funcName: 'liveVideo',
+              liveId: this.liveData.Id
+            }
+            this.$router.push({name: '直接支付', query: params});
+          });
+        } else {
+          return true;
+        }
+      },
+      open() {
+        var u = window.navigator.userAgent;
+        var isAndroid = u.indexOf('Android') > -1 || u.indexOf('Linux') > -1; //android终端或者uc浏览器
+        var isiOS = !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/);
+        if (isAndroid) {
+          window.setTimeout(function () {
+            window.location.href = "http://a.app.qq.com/o/simple.jsp?pkgname=com.yipong.app";
+            /***Android移动端下载地址***/
+          }, 200);
+
+        }
+        if (isiOS) {
+          window.setTimeout(function () {
+            window.location.href = "https://itunes.apple.com/us/app/yi-bang-wang/id1052452628?l=zh&ls=1&mt=8";
+            /***下载app的地址***/
+          }, 200);
+
+        }
+      },
+      initSdk() {
+        if (this.uid != '') {
+          this.$store.dispatch('setChatroomId', {chatroomId: this.mChatroomId})
+          //连接聊天室
+          this.$store.dispatch('connect', {type: "chatroom", chatroomId: this.mChatroomId});
+          this.api.updateLiveStreamCustomer({
+            LiveStreamVideoId: this.$route.params.liveStreamId,
+            CustomerId: this.userInfo.UserId,
+            IsSpeak: false,
+            ClientTypeId: 3,
+          });
+        }
+      },
+      playLive(url) {
+        var lowUrl = url.toLowerCase();
+        var urlType = lowUrl.substring(0, 4);
+        var type;
+        if (url === '') {
+          alert('请输入播放地址');
+          return;
+        }
+        switch (urlType) {
+          case 'http':
+            if (lowUrl.indexOf('mp4') !== -1) {
+              type = 'video/mp4';
+            } else if (lowUrl.indexOf('flv') !== -1) {
+              type = 'video/x-flv';
+            } else if (lowUrl.indexOf('m3u8') !== -1) {
+              type = 'application/x-mpegURL';
+            }
+            break;
+          case 'rtmp':
+            type = 'rtmp/flv';
+            break;
+        }
+        ;
+
+        this.myPlayer.onError(function (error) {
+
+        });
+        //在安卓播放直播时, 无法评论, 必须写成 video/mp4
+        this.myPlayer.setDataSource({type: 'video/mp4', src: url});
+      },
+      updateMyChatroomMemberInfoDone(error, obj) {
+      },
+      updateCount() {
+
+        const chatroom = this.$store.state.currChatroom
+        if (chatroom) {
+
+          chatroom.updateMyChatroomMemberInfo({
+            member: {
+              nick: this.$store.state.yipong.Nickname,
+              avatar: this.$store.state.yipong.UserHeaderImageUrl,
+            },
+            done: this.updateMyChatroomMemberInfoDone,
+            needNotify: false,
+          })
+
+          chatroom.getChatroom({
+            done: (error, info) => {
+              if (error) {
+                return
+              }
+
+              info = info.chatroom || {onlineMemberNum: 0}
+
+              this.$store.dispatch("updateChatroomInfo", info);
+
+              chatroom.getChatroomMembers({
+                onlyOnline: true,
+                guest: false,
+                limit: 100,
+                done: (error, obj) => {
+                  if (error) {
+                    return
+                  }
+                  const mArray = obj.members;
+                  var count = 0;
+                  for (var index = 0; index < mArray.length; index++) {
+                    var item = mArray[index];
+                    if (item.type == "owner" || item.type == "manager") {
+                      count = count + 1;
+
+                    }
+                  }
+                }
+              })
+            }
+          })
+        }
+      }
+    }
+  }
+</script>
+
+<style scoped>
+  h3 {
+    margin: 0;
+    padding: 0;
+  }
+
+  .div-startbuttom {
+    margin-top: 20%;
+    width: 100%;
+    height: 60%;
+    position: absolute;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+    align-self: center;
+  }
+
+  .div-startbuttom img {
+    width: 50px;
+    height: 50px;
+  }
+
+  .hello {
+    margin: 0;
+    padding: 0;
+    position: fixed;
+    min-height: 100%;
+  }
+
+  .hello .studio-nav {
+    position: fixed;
+    background: rgba(0, 0, 0, .25);
+    left: 8px;
+    top: 8px;
+    z-index: 9;
+    padding-right: 10px;
+    border-radius: 40px/40px;
+    height: 40px;
+  }
+
+  .hello .studio-nav .studio-img {
+    height: 40px;
+    float: left;
+    width: 40px;
+    border-radius: 40px/40px;
+  }
+
+  .hello .studio-nav .studio-img img {
+    height: 100%;
+    width: 40px;
+    border-radius: 40px/40px;
+  }
+
+  .hello .studio-nav .studio-details {
+    float: left;
+    line-height: 20px;
+    margin-left: 10px;
+  }
+
+  .hello .studio-nav .attention {
+    margin-left: 10px;
+    float: left;
+    line-height: 40px;
+  }
+
+  .hello .studio-nav .attention a {
+    padding: 5px 8px;
+    border-radius: 25px/25px;
+    background-color: #FF9000;
+    font-size: 1.4rem;
+    color: white;
+  }
+
+  .hello .studio-nav .studio-details h3 {
+    line-height: 20px;
+    font-family: "宋体";
+    margin-left: -5px;
+    color: white;
+    font-size: 1.3rem;
+    max-width: 150px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .hello .studio-nav .studio-details .studionumber {
+    text-align: left;
+    color: white;
+    font-size: 1.3rem;
+  }
+
+  .video-js {
+    z-index: 1;
+    object-fit: fill;
+  }
+
+  .bottom {
+    position: fixed;
+    left: 0px;
+    bottom: 30px;
+    z-index: 9;
+    width: 100%;
+    height: 30px;
+    display: flex;
+  }
+
+  .bottom .ask {
+    color: white;
+    flex: 3;
+    height: 30px;
+    margin-left: 5px;
+    background: rgba(0, 0, 0, .5);
+    border-radius: 15px/15px;
+    line-height: 30px;
+    padding-right: 5px;
+    position: relative;
+  }
+
+  .bottom .ask .ask-icon {
+    position: absolute;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    background: url(../assets/ask.png) no-repeat left;
+  }
+
+  .bottom .ask .ask-text {
+    float: right;
+    margin-right: 20px;
+  }
+
+  .bottom .face {
+    flex: 2;
+    color: white;
+    height: 30px;
+    margin-left: 5px;
+    background: rgba(0, 0, 0, .5);
+    border-radius: 15px/15px;
+    padding-right: 5px;
+    display: flex;
+  }
+
+  .bottom .face .face-icon {
+    float: left;
+    margin: 0 3px 0 auto;
+    width: 30px;
+    height: 30px;
+    background: url(../assets/face.png) no-repeat left;
+  }
+
+  .bottom .face .face-text {
+    margin: 0 auto 0 0;
+    float: left;
+    line-height: 30px;
+  }
+
+  .bottom .share {
+
+    width: 30px;
+    height: 30px;
+    margin-left: 6px;
+    background: rgba(0, 0, 0, .5);
+    border-radius: 50%;
+    line-height: 30px;
+    padding-right: 5px;
+  }
+
+  .bottom .share .share-icon {
+    float: left;
+    width: 30px;
+    height: 30px;
+    background: url(../assets/share.png) no-repeat center;
+  }
+
+  .bottom .end {
+    color: white;
+    margin-left: 6px;
+    margin-right: 10px;
+    background: rgba(0, 0, 0, .5);
+    border-radius: 30px/30px;
+    line-height: 30px;
+    padding-right: 5px;
+    text-align: right;
+  }
+
+  .bottom .end .end-icon {
+    float: left;
+    width: 30px;
+    height: 30px;
+    background: url(../assets/btn_close.png) no-repeat center;
+  }
+
+  .chat-list {
+    z-index: 100;
+    position: fixed;
+    left: 0px;
+    bottom: 80px;
+    width: 70%;
+    height: 170px;
+    overflow: hidden;
+    overflow-y: scroll;
+  }
+
+  .ed {
+    width: 100%;
+  }
+</style>

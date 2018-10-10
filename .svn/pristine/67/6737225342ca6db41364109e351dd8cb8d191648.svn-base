@@ -1,0 +1,306 @@
+<template>
+  <div class="findHome">
+    <div class="page-wrap tabb">
+      <div class="mint-searchbar searchBG1">
+        <div class="mint-searchbar-inner searchBG2">
+          <i class="mintui mintui-search "></i>
+          <input placeholder="请输入关键字搜索医生" readonly="readonly" style="font-size: 1.4rem;" class="mint-searchbar-core"
+                 @click="searchStudio">
+        </div>
+      </div>
+      <div class="zys-zndy" @click="capacityGuide()">
+        <div class="dy-icon"><img src="../../images/zndy-doc.png"></div>
+        <div class="btitle">智能导医<img src="../../images/24h.png"></div>
+        <div class="zndy-jt"><img src="../../images/zndyjt.png"></div>
+        <div class="stitle">根据发病部位找到医生</div>
+      </div>
+      <div class="zys-zndy">
+        <div class="dy-icon"><img style="width: 40px" src="../../images/zndy-ks.png"></div>
+        <div class="btitle">按学科查询</div>
+        <div class="stitle">选择相应的病症找到医生</div>
+      </div>
+      <div class="content1" :style="subjectsHeight">
+        <ul :key="index" v-for="(item,index) in subjectList">
+          <div class="zys-zndylist" @click="searchStadio(item.Id)">
+            <div class="dylist-icon">
+              <img :src="item.LogoColor"></div>
+            <div class="dylist-btitle">{{item.Category}}</div>
+          </div>
+        </ul>
+
+      </div>
+      <!--广告 -->
+      <div class="mint-content-banner mt32" style="margin-top:1px">
+      </div>
+      <div class="titlebg">
+        <div class="titlebg-1"><img class="titlebg-img" src="../../images/wjk.png">
+          <span class="titlebg-f">微健康&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+        <div class="titlebg-2" @click="moreWeiList"><span class="titlebg-f b2 ">更多</span></div>
+      </div>
+      <div class="zys-wjklist" style="text-align:left">
+        <div :key="weiIndex" v-for="(weiItem,weiIndex) in weiList">
+          <div class="video-tj-list" @click="weiDetail(weiItem.studioStatusId, weiItem.title)">
+            <div class="video-tj-listl" style="float:left;height:80px;overflow: hidden">
+              <img :src="weiItem.fileList[0].Url" v-if="weiItem.fileList.length > 0">
+            </div>
+            <div class="video-tj-listr">
+              <span class="font1421 text-over-ellipsis"
+                    style="margin-left:6px;display: block;">{{weiItem.title}}</span>
+              <span class="video-tj-listr1 font1421 b3 show-three-lines"
+                    style="margin-left:6px;font-size:1.2rem;"
+                    v-html="weiItem.content"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="mint-tabbar is-fixed" style="z-index:999">
+          <a class="mint-tab-item" @click="videoHome()">
+            <div class="mint-tab-item-icon"><img src="../../images/main-nav-1-0.png"></div>
+            <div class="mint-tab-item-label">
+              视频
+            </div>
+          </a>
+          <a class="mint-tab-item" @click="liveHome">
+            <div class="mint-tab-item-icon"><img src="../../images/main-nav-2-0.png"></div>
+            <div class="mint-tab-item-label">
+              直播
+            </div>
+          </a>
+          <a class="mint-tab-item is-selected" @click="findHome">
+            <div class="mint-tab-item-icon"><img src="../../images/main-nav-3-1.png"></div>
+            <div class="mint-tab-item-label">
+              找医生
+            </div>
+          </a>
+          <a class="mint-tab-item" @click="myHome">
+            <div class="mint-tab-item-icon"><img src="../../images/main-nav-4-0.png"></div>
+            <div class="mint-tab-item-label">
+              我的
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  import VideoItem from '@/components/video/VideoItem';
+  import LiveItem from '@/components/livelist/LiveItem';
+  import * as constant from '../../configs/constant';
+  import allImg from '../../images/quanbu@2x.png';
+  export default {
+    components: {
+      VideoItem, LiveItem
+    },
+    data() {
+      return {
+        list: [],
+        allLoaded: false,
+        bottomStatus: '',
+        topStatus: '',
+        wrapperHeight: 200,
+        translate: 0,
+        moveTranslate: 0,
+        PageIndex: 1,
+        PageSize: 10,
+        subjectList: [],
+        weiList: [],
+        advertisementInfo: Object,
+        subjectsHeight: {
+          height: "0px",
+        }
+      };
+    },
+    methods: {
+      //视频主页
+      videoHome() {
+        this.$router.push({name: '主页'})
+      },
+      //直播主页
+      liveHome() {
+        this.$router.push({name: '直播'})
+      },
+      //找医生主页
+      findHome() {
+        // 点击找医生主页不刷新
+      },
+      //我的主页
+      myHome() {
+        this.$router.push({name: '个人主页'})
+      },
+      // 找医生界面查找医生的框
+      searchStudio() {
+        this.$router.push({path: '/Studiolist/' + -1})
+      },
+      capacityGuide() {
+        this.$router.push({name: '智能导医-男士'})
+      },
+      //学科工作室查询
+      searchStadio(event) {
+        this.$router.push({path: '/Studiolist/' + event})
+      },
+      //微健康详情
+      weiDetail(event, shareTitle) {
+        shareTitle = shareTitle ? shareTitle : '微健康详情';
+        this.$router.push({path: '/WeHealthDetail/' + event + '/' + shareTitle})
+      },
+      //更多微健康
+      moreWeiList() {
+        this.$router.push({path: "/WeHealthList/-1"})
+      },
+      handleTopChange(status) {
+        this.moveTranslate = 1;
+        this.topStatus = status;
+      },
+      translateChange(translate) {
+        const translateNum = +translate;
+        this.translate = translateNum.toFixed(2);
+        this.moveTranslate = (1 + translateNum / 70).toFixed(2);
+      },
+      loadTop() {
+        this.PageIndex = 1;
+        let params = {
+          "PageIndex": this.PageIndex,
+          "PageSize": this.PageSize,
+          "CustomerTypeId": 0,
+        }
+        this.api.getWorkRooms(params).then(res => {
+          this.$refs.loadmore.onTopLoaded()
+          this.list = res.Data.Data;
+          this.$emit('studiolistfresh', true);
+        });
+      },
+      handleBottomChange(status) {
+        this.bottomStatus = status;
+      },
+      loadBottom() {
+        this.PageIndex++;
+        let params = {
+          "PageIndex": this.PageIndex,
+          "PageSize": this.PageSize,
+          "CustomerTypeId": 0,
+        }
+        this.api.getWorkRooms(params).then(res => {
+          for (let i = 0; i < res.Data.Data.length; i++) {
+            this.list.push(res.Data.Data[i]);
+          }
+          // this.$refs.loadmore.onBottomLoaded();
+          this.$emit('studiolistfinish', true);
+        });
+      },
+    },
+    mounted() {
+      this.$store.state.shareData.title = "找医生";
+      this.$store.state.shareData.description = "找医生，在线咨询、视频咨询";
+      let params = {
+        "PageIndex": this.PageIndex,
+        "PageSize": this.PageSize,
+        "CustomerTypeId": 0,
+      }
+      // 获取医科分类
+      let subjectParams = {
+        "PageIndex": this.PageIndex,
+        "PageSize": 150,
+      }
+      this.api.getSubjectsNew(subjectParams).then(res => {
+        this.subjectList = res.Data.Data;
+        this.subjectList.push({
+          Category: "全部",
+          Id: -1,
+          LogoColor: allImg,
+        })
+        var length = res.Data.Data.length + 1;
+        this.subjectsHeight.height = Math.ceil(length / 4) * 61 + "px";
+      });
+      // 找医生广告
+      let findAd = {"Type": 716};
+      this.api.advertisementInfo(findAd).then(res => {
+        for (let i = 0; i < res.Data.length; i++) {
+          if (res.Data[i].AdType == 1) {
+            this.advertisementInfo = res.Data[i];
+            break;
+          }
+        }
+      });
+      // 微健康列表信息
+      let weiParams = {
+        "WorkRoomId": -1,
+        "WorkRoomDynamicTypeId": 1,
+        "PageIndex": this.PageIndex,
+        "PageSize": 3,
+      };
+      this.api.getWorkRoomDynamics(weiParams).then(res => {
+        this.weiList = res.Data.Data;
+      });
+    },
+    destroyed() {
+      this.$store.state.shareData.title = "";
+      this.$store.state.shareData.description = "";
+    },
+  };
+</script>
+
+<style scoped lang="scss">
+  @import '../../common/style.css';
+
+  .searchBG1 {
+    padding: 4px 6px 0px 6px;
+    background-color: #FFF;
+  }
+
+  .searchBG2 {
+    background-color: #f3f3f3;
+  }
+
+  .searchIcon {
+    color: #42b3ff;
+    margin-top: 3px;
+  }
+
+  .zys-zndy {
+    text-align: left;
+    .dy-icon {
+      width: 65px;
+      img {
+        width: 46px;
+        margin: 8px 0 0 10px;
+      }
+    }
+    .btitle {
+      font-size: 1.7rem;
+    }
+  }
+
+  .content1 {
+    width: 100%;
+    background-color: white;
+    .zys-zndylist {
+      height: 60px;
+      width: calc(25% - 1px);
+      float: left;
+      text-align: center;
+      border-bottom: 1px #F2F2F2 solid;
+      border-right: 1px #F2F2F2 solid;
+      margin: 0px;
+      .dylist-icon {
+        padding: 0;
+        width: 100%;
+        float: left;
+        text-align: center;
+        margin-top: 5px;
+        img {
+          height: 25px;
+        }
+      }
+      .dylist-btitle {
+        margin-top: 0;
+        width: 100%;
+        font-size: 1.2rem;
+        color: #212121;
+        float: left;
+      }
+    }
+  }
+</style>

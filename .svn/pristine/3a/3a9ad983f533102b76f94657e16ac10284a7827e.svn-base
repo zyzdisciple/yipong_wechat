@@ -1,0 +1,482 @@
+import axios from 'axios'
+import qs from 'qs'
+import store from '../store'
+import router from '../router'
+import { Indicator } from 'mint-ui';
+import Vue from 'vue'
+
+// axios 配置
+axios.defaults.timeout = 100000;
+axios.defaults.headers.post['Content-Type'] = 'application/json';
+axios.interceptors.request.use((config) => {
+    if (config.method === 'post') {
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
+
+//返回状态判断
+axios.interceptors.response.use((res) => {
+
+    if (!res) {
+        alert(res);
+        return Promise.reject(res);
+    }
+    return res;
+}, (error) => {
+    if (error.response) {
+    }
+    if (error.response.status == 401 && store.state.getUserInfoTimes < 3) {
+        store.state.getUserInfoTimes++;
+        if (window.wechatAuth) {
+          window.wechatAuth.authorize();
+        }
+    } else if (store.state.getUserInfoTimes >= 3) {
+        alert("你的个人信息已失效,请退出重新进入!");
+    }
+    return Promise.reject(error);
+});
+
+//get方法
+export function getData(url, params) {
+    return new Promise((resolve, reject) => {
+        axios({
+            method: 'get',
+            url: url,
+            params: params,
+            withCredentials: true
+        })
+            .then(response => {
+                resolve(response.data);
+            }, err => {
+                reject(err);
+            })
+            .catch((error) => {
+                reject(error)
+            })
+    })
+}
+// post upload
+export function postUpload(url, data) {
+    return new Promise((resolve, reject) => {
+        Indicator.open();
+        let uuid = window.localStorage.getItem("UUID")
+        let userinfo = window.localStorage.getItem("userInfo")
+        let info = null;
+        try {
+          info = JSON.parse(userinfo)
+        } catch(error) {
+          info = userinfo;
+        }
+
+        if (data == undefined) {
+            data = {};
+        }
+        data.secData = {
+            "app_from": "web app",
+            "app_id": "1",
+            "app_version": "1.0.20",
+            "device_name": "web",
+            "device_type": "web_app",
+            "identify_key": uuid,
+            "language": "zh",
+            "network_type": "2",
+            "record": "1",
+            "version": 6.0,
+        }
+        if (info) {
+            data.secData["token"] = info.Token
+            data.secData["user_id"] = info.UserId
+        }
+        axios({
+            method: 'post',
+            url: url,
+            data: data,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            withCredentials: true
+        })
+        .then(response => {
+          resolve(response.data);
+          Indicator.close();
+        }, err => {
+          reject(err);
+          Indicator.close();
+        })
+        .catch((error) => {
+          reject(error)
+          Indicator.close();
+        })
+    })
+}
+// post get all database
+export function postBase(url, data) {
+  return new Promise((resolve, reject) => {
+    Indicator.open();
+    data = {};
+    url = url + "/1970?typeId=3";
+    axios({
+      method: 'post',
+      url: url,
+      data: data,
+      headers: { 'Content-Type': 'application/json' },
+      withCredentials: true
+    })
+      .then(response => {
+        resolve(response.data);
+        Indicator.close();
+      }, err => {
+        reject(err);
+        Indicator.close();
+      })
+      .catch((error) => {
+        reject(error)
+        Indicator.close();
+      })
+  })
+}
+//post方法
+export function postData(url, data) {
+    return new Promise((resolve, reject) => {
+        Indicator.open();
+        let uuid = window.localStorage.getItem("UUID")
+        let userinfo = window.localStorage.getItem("userInfo")
+      let info = null;
+      try {
+        info = JSON.parse(userinfo)
+      } catch(error) {
+        info = userinfo;
+      }
+        data.secData = {
+            "app_from": "web app",
+            "app_id": "1",
+            "app_version": "1.0.20",
+            "device_name": "web",
+            "device_type": "web_app",
+            "identify_key": uuid,
+            "language": "zh",
+            "network_type": "2",
+            "record": "1",
+            "version": 6.0,
+        }
+        if (info) {
+            data.secData["token"] = info.Token
+            data.secData["user_id"] = info.UserId
+        }
+        axios({
+            method: 'post',
+            url: url,
+            data: JSON.stringify(data),
+            headers: { 'Content-Type': 'application/json' },
+            withCredentials: true
+        })
+            .then(response => {
+                resolve(response.data);
+                Indicator.close();
+            }, err => {
+                reject(err);
+                Indicator.close();
+            })
+            .catch((error) => {
+                reject(error)
+                Indicator.close();
+            })
+    })
+}
+
+//频繁请求的post方法
+export function postDataForRefresh(url, data) {
+  return new Promise((resolve, reject) => {
+    let uuid = window.localStorage.getItem("UUID")
+    let userinfo = window.localStorage.getItem("userInfo")
+    let info = null;
+    try {
+      info = JSON.parse(userinfo)
+    } catch(error) {
+      info = userinfo;
+    }
+
+
+    data.secData = {
+      "app_from": "web app",
+      "app_id": "1",
+      "app_version": "1.0.20",
+      "device_name": "web",
+      "device_type": "web_app",
+      "identify_key": uuid,
+      "language": "zh",
+      "network_type": "2",
+      "record": "1",
+      "version": 6.0,
+    }
+    if (info) {
+      data.secData["token"] = info.Token
+      data.secData["user_id"] = info.UserId
+    }
+    axios({
+      method: 'post',
+      url: url,
+      data: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+      withCredentials: true
+    })
+      .then(response => {
+        resolve(response.data);
+        Indicator.close();
+      }, err => {
+        reject(err);
+      })
+      .catch((error) => {
+        reject(error)
+      })
+  })
+}
+
+export default {
+    basicDatas(params) { //获取基础数据
+      return postBase('/api/BasicDatas', params)
+    },
+    uploadFile(params) { //上传文件
+      return postUpload('/api/file/upload', params)
+    },
+    playVideoReport(params) { //视频播放统计
+      return postDataForRefresh('/api/Common/PlayVideoReport', params)
+    },
+    avatar(params) { //更新用户头像
+      return postData('/api/User/Avatar', params)
+    },
+    myStatus(params) { //获取用户状态
+      return postData('/api/User/MyStatus', params)
+    },
+    deleteCustomerOnlineConsult(params) { //删除咨询
+      return postData('/api/customer/DeleteCustomerOnlineConsult', params)
+    },
+    deleteCustomerMedicalRecord(params) { //删除病历
+      return postData('/api/Customer/DeleteCustomerMedicalRecord', params)
+    },
+    getCustomerMedicalRecord(params) { //病历详情
+      return postData('/api/Customer/GetCustomerMedicalRecord', params)
+    },
+    getCustomerMedicalRecords(params) { //病历列表
+      return postData('/api/Customer/GetCustomerMedicalRecords', params)
+    },
+    createCustomerMedicalRecord(params) { //创建病历
+      return postData('/api/Customer/CreateCustomerMedicalRecord', params)
+    },
+    deleteCustomerHealthyRecord(params) { //删除健康档案
+      return postData('/api/Customer/DeleteCustomerHealthyRecord', params)
+    },
+    updateCustomerHealthyRecord(params) { //修改健康档案
+      return postData('/api/Customer/UpdateCustomerHealthyRecord', params)
+    },
+    createCustomerHealthyRecord(params) { //创建健康档案
+      return postData('/api/Customer/CreateCustomerHealthyRecord', params)
+    },
+    getCustomerHealthyRecord(params) { //健康档案详情
+      return postData('/api/Customer/GetCustomerHealthyRecord', params)
+    },
+    getCustomerHealgthyRecords(params) { //健康档案列表
+      return postData('/api/Customer/GetCustomerHealthyRecords', params)
+    },
+    getVideoTags(params) { //视频标签
+      return postData('api/Video/getVideoTags', params)
+    },
+    getHotOnline(params) { //热度咨询
+      return postData('/api/customer/GetCustomerOnlineConsults', params)
+    },
+    getCustomerFollowWorkRooms(params) { // 我的关注列表
+      return postData('/api/v2/LivingStream/GetCustomerFollowWorkRooms', params)
+    },
+    getMyWallet(params) { //用户钱包信息
+      return postData('/api/User/MyWallet', params)
+    },
+    getMyHomePage(params) { //用户主页信息
+       return postData('/api/User/MyHomePage', params)
+    },
+    getBasicInfo(params) { //用户个人详情
+       return postData('/api/User/BasicInfo', params)
+    },
+    updateUserInformation(params) { //更新用户信息
+      return postData('/api/User/BasicInfo/Update', params)
+    },
+    getWorkRoomCustomer(params) { //根据ID获取工作室详情
+       return postData('/api/v2/LivingStream/GetWorkRoomCustomer', params)
+    },
+    getVideoInfo(params) { //根据ID获取视频详情
+       return postData('/api/Video/GetVideoInfo', params)
+    },
+    getWorkRoomDynamicById(params) { //根据ID获取微健康详情
+       return postData('/api/LivingStream/GetWorkRoomDynamicById', params)
+    },
+    createWorkRoomDynamicReply(params) { //微健康评论提交
+      return postData('/api/v2/LivingStream/CreateWorkRoomDynamicReply', params)
+    },
+    recommendVideoList(params) { //视频推荐视频
+       return postData('/api/Video/RecommendVideoList', params)
+    },
+    releaseReplyVideo(params) { //发布视频评论
+       return postData('/api/v2/User/Reply', params)
+    },
+    getSearchVideos(params) { //根据分类获取视频列表
+       return postData('/api/Video/getSearchVideos', params)
+    },
+    getWorkRoom(params) { //获取工作室具体详情
+       return postData('v2/LivingStream/GetWorkRoom', params)
+    },
+    getDoctorWorkRooms(params) { //找医生工作室列表
+       return postData('/api/WorkRoom/GetDoctorWorkRooms', params)
+    },
+    appointmentLiveStream(params) { //直播免费报名
+      return postData('/api/v2/LivingStream/AppointmentLiveStream', params)
+    },
+    getMessages(params) { //获取直播评论列表
+       return postData('/api/v2/LivingStream/GetMessages', params)
+    },
+    getWorkRoomDynamics(params) { //获取微健康列表
+       return postData('/api/v2/LivingStream/GetWorkRoomDynamics', params)
+    },
+    getSubjects(params) { //获取找医生中医科分类
+       return postData('/api/WorkRoom/GetSubjects', params)
+    },
+    advertisementInfo(params) { //获取直播广告信息
+       return postData('/api/Community/AdvertisementInfo', params)
+    },
+    getNewLive(params) { //直播首页获取最新一场直播
+       return postData('/api/v2/LivingStream/GetNewestLiveStream', params)
+    },
+    getweHealthDetail(params) { //根据ID获取微健康评论详情
+      return postData('/api/customer/getCustomerComment', params)
+    },
+    getVideoNoteList(params) { //根据ID获取视频评论列表
+       return postData('/api/customer/getCustomerComments', params)
+    },
+    getVideoDetail(params) { //根据ID获取视频详情
+       return postData('/api/Community/GetDetailInfo', params)
+    },
+    getVideoList(params) { //获取视频列表
+        return postData('/api/Video/VideoList', params)
+    },
+    getWorkRooms(params) { //获取工作室列表
+        return postData('/api/LivingStream/GetWorkRooms', params)
+    },
+    getStudioDetail(params) { //通过id获取工作室详情
+        return postData('/api/LivingStream/GetWorkRoomById', params)
+    },
+    getLiveStreams(params) { //获取直播列表
+        return postData('/api/v2/LivingStream/GetLiveStreams', params)
+    },
+    getMyLiveStreams(params) { //获取我的直播列表（预直播等）
+        return postData('/api/LivingStream/GetMyLiveStreams', params)
+    },
+    getLiveStreamById(params) { //获取直播详情
+        return postData('/api/v2/LivingStream/GetLiveStreamById', params)
+    },
+    createMessage(params) { //直播评论
+      return postData('/api/LivingStream/CreateMessage', params)
+    },
+    verifyLiveSecretKey(params) { //验证秘钥
+        return postData('/api/LivingStream/VerifySecretKey', params)
+    },
+    FollowWorkRoom(params) { //关注工作室
+        return postData('/api/LivingStream/FollowWorkRoom', params)
+    },
+    getCustomerPayInfo(params) { //获取支付详情
+        return postData('/api/v2/LivingStream/GetCustomerPayInfo', params)
+    },
+    getMyPointsInfo(params) { //获取用户积分
+        return postData('/api/User/MyScore', params)
+    },
+    getLiveScorePay(params) { //直播扣费接口
+        return postData('/api/LivingStream/ChangeCustomerScore', params)
+    },
+    getRequestVerifyCode(params) { //获取验证码接口
+        return postData('/api/user/RequestVerifyCode', params)
+    },
+    getConsummaVerifyCode(params) { //验证码接口
+        return postData('/api/user/consummateinfo', params)
+    },
+    PariseVideo(params) { //为视频点赞
+        return postData('/api/Community/Praise', params)
+    },
+    wechatcodelogin(params) { //验证秘钥
+        return postData('/api/user/wechatcodelogin', params)
+    },
+    getwechatjssignature(params) { //提交验证秘钥
+        return postData('/api/user/getwechatjssignature', params)
+    },
+    CollectVideo(params) { //收藏
+        return postData('/api/Community/Collect', params)
+    },
+    getVedioCollectList(params) { //收藏视频列表
+        return postDataForRefresh('/api/Video/VideoCollectList', params)
+    },
+    getCollectLiveStreams(params) { //收藏直播列表
+      return postDataForRefresh('/api/v2/LivingStream/GetCollectLiveStreams', params)
+    },
+    getCollectWorkRoomDynamics(params) { //收藏直播列表
+      return postDataForRefresh('/api/v2/LivingStream/GetCollectWorkRoomDynamics', params)
+    },
+    getMyPointsList(params) { //收藏列表
+        return postData('/api/User/MyScoreList?pageIndex=' + params.pageIndex + '&pageSize=' + params.pageSize)
+    },
+    getWorkRoomVideos(params) { //相关视频
+        return postData('/api/LivingStream/WorkRoomVideo', params)
+    },
+    UpdateAudienceRecord(params) {
+        return postDataForRefresh('/api/LivingStream/UpdateLiveStreamCustomer', params)
+    },
+    getSymptomDatas(params) {
+        return postData('/api/CapacityGuide/GetSymptomDatas', params)
+    },
+    getBodyParts(params) {
+        return postData('/api/CapacityGuide/GetBodyParts', params)
+    },
+    getDoctorWorkRoomsBySymptomId(params) {
+        return postData('/api/WorkRoom/GetDoctorWorkRoomsBySymptomId', params)
+    },
+    getCustomerAdmireConfig(params) {
+      return postData('/api/customer/GetCustomerAdmireConfig', params)
+    },
+    createCustomerOnlineConsult(params) {
+      return postData('/api/customer/CreateCustomerOnlineConsult', params)
+    },
+    getCustomerOnlineConsultSessionMsg(params) {
+      return postData('/api/customer/GetCustomerOnlineConsultSessionMsg', params)
+    },
+    getCustomerOnlineConsultTags(params) {
+      return postData('/api/customer/GetCustomerOnlineConsultTags', params)
+    },
+    createCustomerOnlineConsultEvaluation(params) {
+      return postData('/api/customer/CreateCustomerOnlineConsultEvaluation', params)
+    },
+    updateCustomerOnlineConsultState(params) {//更新咨询状态
+      return postData('/api/customer/UpdateCustomerOnlineConsultState', params)
+    },
+    createPayOrder(params) {
+      return postData('/api/payment/create', params)
+    },
+    getCustomerOnlineConsult(params) { //获取聊天咨询详情
+        return postData('/api/customer/GetCustomerOnlineConsult', params)
+    },
+    getCustomerOnlineConsultEvaluation(params) {//获取咨询评价
+        return postData('/api/customer/GetCustomerOnlineConsultEvaluation', params)
+    },
+    getCustomerPaymentStatus(params) {//获取支付结果
+        return postData('/api/payment/getCustomerPaymentStatus', params)
+    },
+    getWeChatPayInfo(params) {//统一下单接口
+      return postData('/api/payment/getwechatpayinfo', params)
+    },
+    updateLiveStreamCustomer(params) {//更新直播观众
+      return postDataForRefresh('/api/LivingStream/UpdateLiveStreamCustomer', params)
+    },
+    AddCustomer(params) {//更新观看录播人数
+      return postDataForRefresh('/api/LivingStreamVideo/AddCustomer', params)
+    },
+    getLiveStreamCustomerCount(params) {//获取直播人数
+      return postDataForRefresh('/api/LivingStream/GetLiveStreamCustomerCount', params)
+    },
+    liveStreamVideoPlayReport(params) {//获取直播人数
+      return postDataForRefresh('/api/Common/LiveStreamVideoPlayReport', params)
+    }
+}

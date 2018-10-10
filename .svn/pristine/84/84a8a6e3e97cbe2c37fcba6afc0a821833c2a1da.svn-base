@@ -1,0 +1,154 @@
+<template>
+  <div :style="scrollStyle" v-infinite-scroll="mecLoadMore" infinite-scroll-immediate-check="false"
+       infinite-scroll-disabled="docLoading" class="live-talent" infinite-scroll-distance="50">
+    <div v-if="studioMecList.length > 0" v-show="mecInit">
+      <a :key="Index" v-for="(Item,Index) in studioMecList">
+        <div class="gzs-ys brw" @click="StudioDetail(Item.Id, Item.Name)">
+          <div class="gzs-ys-l">
+            <div class="gzs-ys-l-img" :style="{backgroundImage:'url(' + Item.Picture.Url + ')'}"></div>
+          </div>
+          <div class="gzs-ys-r">
+            <div class="gzs-ys-r1">
+              {{Item.Name}}
+            </div>
+            <div>
+              <pre class="show-three-lines">{{Item.Description}}</pre>
+            </div>
+          </div>
+          <div class="gzs-ys-rr">
+            <button @click.stop="unsubscribe(Item.Id)" class="button-primary-gz">取消关注</button>
+          </div>
+        </div>
+      </a>
+    </div>
+    <p v-show="loadPage" class="page-infinite-loading">
+      <mt-spinner type="fading-circle"></mt-spinner>
+      加载中...
+    </p>
+  </div>
+</template>
+
+<script scoped>
+  export default {
+    data(){
+      return {
+        studioMecList: [],
+        mecPageIndex: 1,
+        PageSize: 10,
+        mecInit: false,
+        mecLoading: false,
+        loadPage: false,
+        scrollStyle: {
+          top: '50px',
+          height: document.documentElement.clientHeight - 50 + 'px'
+        },
+      };
+    },
+    methods: {
+      //工作室详情
+      StudioDetail(event, name) {
+        this.$router.push({path: '/StudioDetail/' + event + '/' + name})
+      },
+      // 取消关注
+      unsubscribe(StudioID) {
+        let userInfo = window.localStorage.getItem("userInfo");
+        userInfo = JSON.parse(userInfo);
+        let params = {
+          "UserID": userInfo.UserId,
+          "WorkRoomId": StudioID,
+          "IsFollow": false,
+        };
+        this.api.FollowWorkRoom(params).then(res => {
+          if (res.Result == 1) {
+            for (let i = 0; i < this.studioMecList.length; i++) {
+              if (StudioID == this.studioMecList[i].Id) {
+                this.studioMecList.splice(i, 1);
+              }
+            }
+          } else {
+            Toast("取消关注失败，请稍后再试！");
+          }
+        });
+      },
+      mecLoadMore() {
+        this.loadPage = true;
+        this.mecLoading = true;
+        setTimeout(() => {
+          this.mecPageIndex++;
+          let params = {
+            "PageIndex": this.mecPageIndex,
+            "PageSize": this.PageSize,
+            "CustomerTypeId": 2,
+          };
+          this.api.getCustomerFollowWorkRooms(params).then(res => {
+            for (let i = 0; i < res.Data.Data.length; i++) {
+              this.studioMecList.push(res.Data.Data[i]);
+            }
+            this.loadPage = false;
+            if (res.Data.HasNextPage) {
+              this.mecLoading = false;
+            } else {
+              this.mecLoading = true;
+            }
+          });
+        }, 2000);
+      },
+    },
+    mounted() {
+      let params = {
+        "PageIndex": this.mecPageIndex,
+        "PageSize": this.PageSize,
+        "FollowTypeId": 2,
+      };
+      this.api.getCustomerFollowWorkRooms(params).then(res => {
+        this.studioMecList = res.Data.Data;
+        this.mecInit = true;
+      });
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+  @import '../../common/style.css';
+
+  .live-talent {
+    text-align: left;
+    position: fixed;
+    width: 100%;
+    overflow: scroll;
+  }
+
+  .gzs-ys {
+    margin-bottom: 1px;
+    .gzs-ys-l {
+      height: 80px;
+      margin-left: 5px;
+      .gzs-ys-l-img {
+        height: 100%;
+        width: 80px;
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        border-radius: 80px;
+      }
+    }
+    .gzs-ys-r {
+      width: 50%;
+      .gzs-ys-r1 {
+        width: 180px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .show-three-lines {
+        font-size: 1.2rem;
+        line-height: 20px;
+      }
+    }
+    .gzs-ys-rr {
+      width: auto;
+      padding-top: 10px;
+    }
+  }
+
+</style>

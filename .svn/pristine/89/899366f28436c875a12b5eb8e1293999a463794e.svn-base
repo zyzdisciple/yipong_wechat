@@ -1,0 +1,217 @@
+<template>
+<div class="LiveVideo" style="width: 100%;height: 100%;position: relative">
+
+    <div class="video-head-info" :style="{'width': workRoomInfoWidth}">
+        <div class="head-image">
+          <img :src="VideoInformation.WorkRoom.Picture.Url" />
+        </div>
+        <div class="work-room-info" style="height: 100%;float: left;width: 100px;">
+            <div class="work-room-base-info">
+                <div class="head-content" :style="{'width': 'calc(100% -' + headContentWidth + 'px)'}">{{VideoInformation.WorkRoom.Name}}</div>
+            </div>
+            <div class="work-room-customer-info">
+                <div style="float: left;width: 45px;margin-left: 5%;">
+                  <img src="../../images/heart.png" width="18px" />
+                  <span style="color: white;line-height: 18px;">{{subscribeCount}}</span>
+                </div>
+                <div style="float: left;">
+                  <img src="../../images/person.png" width="21px" />
+                  <span style="color: white;line-height: 21px;">{{currentCustomer}}</span>
+                </div>
+            </div>
+        </div>
+        <div class="head-right" @click="subscribe()" v-if="!isSubscribe">关注</div>
+    </div>
+    <div style="height: 100%; width: 100%;position: absolute;">
+      <video @play="onPlayerPlay($event)" @pause="onPlayerPause($event)" id="my-video" class="video-js vjs-big-play-centered" controls="controls" data-setup='{}' x5-video-player-fullscreen="true" :playsinline="living" :webkit-playsinline="living" x-webkit-airplay="true" x5-video-player-type="h5" x5-video-orientation="h5"></video>
+    </div>
+    <div class="chat-info">
+      <div class="g-window">
+        <room-chat-list
+        :liveId = "liveId"
+        :liveInfo = "VideoInformation"
+        @change-live-status="changeLiveStatus"
+        ></room-chat-list>
+      </div>
+    </div>
+</div>
+</template>
+
+<script>
+import RoomChatList from '../chat/room/RoomChatList'
+import { setStore, getStore } from '../../store/mlocalstorge';
+import {Toast} from 'mint-ui';
+export default {
+    data() {
+        return {
+            VideoInformation: Object,
+            userInfo: {},
+            chatRoomId: '',
+            isSubscribe: false,
+            subscribeCount: '',
+            currentCustomer: '',
+            timeInterval: '',
+        }
+    },
+    computed: {
+        workRoomInfoWidth() {
+            let width = '';
+            if (this.isSubscribe) {
+                width = '150px';
+            } else {
+                width = '180px';
+            }
+            return width;
+        },
+        headContentWidth() {
+          let width = '';
+          if (this.isSubscribe) {
+              width = 40;
+          } else {
+              width = 70;
+          }
+          return width;
+        },
+        liveId() {
+            return this.$route.params.LiveID;
+        },
+        liveUrl() {
+            return this.$route.params.liveUrl
+        }
+    },
+    components: {
+      RoomChatList,
+    },
+    methods: {
+        initChatRoom() {
+            //连接聊天室
+            this.$store.dispatch('connect',  {type: "chatroom", chatroomId: this.chatRoomId});
+            this.api.updateLiveStreamCustomer({LiveStreamVideoId: this.$route.params.LiveID, CustomerId: this.userInfo.UserId, IsSpeak: false});
+        },
+
+        subscribe() {
+            let params = {
+                "UserID": this.userInfo.UserId,
+                "WorkRoomId": this.VideoInformation.WorkRoom.Id,
+                "IsFollow": true,
+            };
+            this.api.FollowWorkRoom(params).then(res => {
+                if (res.Result == 1) {
+                    Toast("关注成功！");
+                    this.isSubscribe = true;
+                    this.subscribeCount++;
+                } else {
+                    Toast("关注失败，请稍后再试！");
+                }
+            });
+        },
+        changeLiveStatus() {
+            Toast("直播已结束，谢谢观看!");
+        }
+    },
+    destroyed () {
+        //退出聊天室
+        clearInterval(this.timeInterval);
+        this.$store.dispatch('resetChatroomSDK', this.chatRoomId);
+    },
+    mounted() {
+        this.userInfo = JSON.parse(window.localStorage.getItem("userInfo"));
+        let paramsLive = {
+            "Id": this.$route.params.LiveID,
+        }
+        this.api.getLiveStreamById(paramsLive).then(res => {
+            this.VideoInformation = res.Data;
+            this.chatRoomId = this.VideoInformation.WorkRoom.NetEaseRoomId;
+            this.isSubscribe = this.VideoInformation.WorkRoom.IsFollowed;
+            this.subscribeCount = this.VideoInformation.WorkRoom.FollowCount;
+            this.initChatRoom();
+        });
+
+        neplayer("video-content");
+
+        this.api.getLiveStreamCustomerCount({Id: this.liveId}).then(res => {
+          this.currentCustomer = res.Data;
+        })
+        this.timeInterval = setInterval(() => {
+          this.api.getLiveStreamCustomerCount({Id: this.liveId}).then(res => {
+              this.currentCustomer = res.Data;
+          })
+        }, 10000);
+    },
+}
+</script>
+
+<style scoped>
+  .g-window {
+
+  }
+
+  .LiveVideo .video-head-info {
+    position: absolute;
+    height: 40px;
+    background-color: rgba(0,0,0,0.6);
+    top: 10px;
+    left: 5px;
+    border-radius: 5px;
+    z-index: 1;
+    padding: 3px 0px;
+  }
+
+  .LiveVideo .video-head-info .head-image {
+      height: 35px;
+      width: 35px;
+      float: left;
+      border-radius: 35px;
+      overflow: hidden;
+      margin-left: 5px;
+      margin-top: 3px;
+  }
+
+  .LiveVideo .video-head-info .head-image img {
+    height: 100%;
+  }
+
+  .LiveVideo .video-head-info .head-content {
+    font-size: 1.2rem;
+    height: 20px;
+    line-height: 20px;
+    overflow: hidden;
+    text-align: left;
+    padding-left: 5px;
+    float: left;
+    color: white;
+  }
+
+  .LiveVideo .video-head-info .head-right{
+    width: 35px;
+    font-size: 1.2rem;
+    height: 25px;
+    float: left;
+    line-height: 25px;
+    border-radius: 5px;
+    color: white;
+    background-color: #FF9000;
+    margin-top: 8px;
+  }
+
+  .chat-info{
+    height: 50%;
+    position: absolute;
+    bottom: 0px;
+    width: 100%;
+    left: 0px;
+  }
+
+  .work-room-base-info {
+    width: 100%;
+    height: 20px;
+  }
+
+  .work-room-customer-info img {
+    float: left;
+  }
+
+  .chat-info .m-chat-main {
+     padding: 0px;
+  }
+</style>

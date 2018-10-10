@@ -1,0 +1,405 @@
+<template>
+  <div class="LiveTalent" v-show="init">
+    <div class="page-infinite-wrapper" ref="wrapper" :style="{ height: wrapperHeight + 'px' }">
+      <div class="page-infinite-list">
+        <div class="users-bg3" ref="liveRef">
+          <div class="users-bg3-l">
+            <div :class='activeDoc' @click="showDocList">医生工作室</div>
+          </div>
+          <div class="users-bg3-r">
+            <div :class='activeMec' @click="showMecList">机构直播间</div>
+          </div>
+        </div>
+        <div class="live-talent live-talent-doc" :style="scrollStyle" v-if="showDoc"
+             infinite-scroll-immediate-check="false"
+             v-infinite-scroll="loadMore" infinite-scroll-disabled="docLoading">
+          <a :key="docIndex" v-for="(docItem,docIndex) in studioDocList">
+            <div class="gzs-ys brw" @click="StudioDetail(docItem.Id, docItem.Name)">
+              <div class="gzs-ys-l">
+                <div class="gzs-ys-l-img" :style="{backgroundImage:'url(' + docItem.Picture.Url + ')'}"></div>
+              </div>
+              <div class="gzs-ys-r">
+
+                <div class="gzs-ys-r1">
+                  <div class="doctor-name">{{docItem.showTitleContent}}
+                    <f class="doctor-suffix">医生工作室</f>
+                  </div>
+                </div>
+                <div class="gzs-ys-r2">{{docItem.Hospital}}</div>
+                <div class="gzs-ys-r2">{{docItem.Department}}·{{docItem.Technical}}</div>
+                <div class="gzs-ys-r3">从业{{docItem.Seniority}}年</div>
+                <div class="gzs-ys-r4">
+                  <img src="../../images/star1.png" v-for="n in docItem.solidGrade">
+                  <img src="../../images/harfStar.png" v-if="docItem.harfGrade">
+                  <img src="../../images/star0.png" v-for="n in docItem.hollowGrade">
+                  {{docItem.fraction}}
+                </div>
+              </div>
+              <div class="gzs-ys-rr"><img src="../../images/gzs-jt1.png">
+              </div>
+            </div>
+            <div class="gzs-tab brw">
+              <div class="gzs-tabxq" :key="adeptIndex" v-for="(adeptItem,adeptIndex) in docItem.Good">
+                {{adeptItem}}
+              </div>
+            </div>
+          </a>
+          <p v-show="loadPageDoc" class="page-infinite-loading">
+            <mt-spinner type="fading-circle"></mt-spinner>
+            加载中...
+          </p>
+        </div>
+        <div class="live-talent live-talent-mec" :style="scrollStyle" v-if="showMec"
+             infinite-scroll-immediate-check="false"
+             v-infinite-scroll="loadMore" infinite-scroll-disabled="mecLoading">
+          <a :key="mecItem.Id" v-for="(mecItem) in studioMecList">
+            <div class="gzs-ys brw" @click="StudioDetail(mecItem.Id, mecItem.Name)">
+              <div class="gzs-ys-l">
+                <div class="gzs-ys-l-img" :style="{backgroundImage:'url(' + mecItem.Picture.Url + ')'}"></div>
+              </div>
+              <div class="gzs-ys-r">
+                <div class="gzs-ys-r1">
+                  <div class="mec-name">{{mecItem.Name}}</div>
+                  <div class="guide-to-detail"><img src="../../images/gzs-jt1.png"></div>
+                </div>
+                <div>
+                  <pre>{{mecItem.Description}}</pre>
+                </div>
+              </div>
+
+            </div>
+          </a>
+          <p v-show="loadPageMec" class="page-infinite-loading">
+            <mt-spinner type="fading-circle"></mt-spinner>
+            加载中...
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</template>
+
+<script scoped>
+  import VideoItem from '@/components/video/VideoItem';
+  import LiveItem from '@/components/livelist/LiveItem';
+  import {getStore, removeStore} from '../../store/mlocalstorge';
+  import {Toast} from 'mint-ui';
+  import * as constant from '../../configs/constant';
+  import {getWXPayInfo} from '../../utils/WXPay'
+
+  export default {
+    components: {
+      VideoItem, LiveItem
+    },
+    data() {
+      return {
+        list: [],
+        mecPageIndex: 1,
+        docPageIndex: 1,
+        PageSize: 10,
+        wrapperHeight: 0,
+        studioDocList: [],
+        studioMecList: [],
+        showMec: false,
+        showDoc: true,
+        activeDoc: "users-bg3-f is-selected",
+        activeMec: "users-bg3-f",
+        docLoading: true,
+        mecLoading: true,
+        loadPageDoc: false,
+        loadPageMec: false,
+        init: false,
+        scrollStyle: {
+          top: '50px',
+          height: document.documentElement.clientHeight - 50 + 'px'
+        },
+      };
+    },
+
+    methods: {
+      // 医生直播间
+      showDocList() {
+        this.activeDoc = "users-bg3-f is-selected";
+        this.activeMec = "users-bg3-f";
+        this.showDoc = true;
+        this.showMec = false;
+        this.loadPage = false;
+      },
+      // 机构直播间
+      showMecList() {
+        this.showDoc = false;
+        this.showMec = true;
+        this.activeDoc = "users-bg3-f";
+        this.activeMec = "users-bg3-f is-selected";
+        this.loadPage = false;
+      },
+      //工作室详情
+      StudioDetail(studioId, studioName) {
+        this.$router.push({path: '/StudioDetail/' + studioId + '/' + studioName});
+      },
+      loadMore() {
+        if (this.showDoc) {
+          this.docLoadMore();
+        } else {
+          this.mecLoadMore();
+        }
+      },
+      // 医生更多
+      docLoadMore() {
+        this.docLoading = true;
+        this.loadPageDoc = true;
+        setTimeout(() => {
+          this.docPageIndex++;
+          let params = {
+            "PageIndex": this.docPageIndex,
+            "PageSize": this.PageSize,
+            "CustomerTypeId": 1,
+          };
+          this.api.getWorkRooms(params).then(res => {
+            var item;
+            for (let i = 0; i < res.Data.Data.length; i++) {
+              var item = res.Data.Data[i];
+              item.fraction = res.Data.Data[i].Grade / 2;
+              if (String(res.Data.Data[i].fraction).indexOf(".") > -1) {
+                item.solidGrade = parseInt(item.fraction);
+                item.harfGrade = true;
+                item.hollowGrade = 4 - item.solidGrade;
+              } else {
+                item.solidGrade = item.fraction;
+                item.fraction = item.fraction + ".0";
+                item.harfGrade = false;
+                item.hollowGrade = 5 - item.solidGrade;
+              }
+              if (item.AdeptField == null || item.AdeptField == "") {
+                item.Good = []
+              } else {
+                item.Good = item.AdeptField.split(" ");
+              }
+              item.showTitleContent = item.Name ? item.Name.replace("医生工作室", "") : "";
+              this.studioDocList.push(item);
+
+            }
+            this.loadPageDoc = false;
+            if (res.Data.HasNextPage) {
+              this.docLoading = false;
+            } else {
+              this.docLoading = true;
+            }
+          });
+        }, 2500);
+      },
+      // 直播间更多
+      mecLoadMore() {
+        this.mecLoading = true;
+        this.loadPageMec = true;
+        setTimeout(() => {
+          this.mecPageIndex++;
+          let params = {
+            "PageIndex": this.mecPageIndex,
+            "PageSize": this.PageSize,
+            "CustomerTypeId": 4,
+          };
+          this.api.getWorkRooms(params).then(res => {
+            res.Data.Data.forEach(item => {
+              this.studioMecList.push(item);
+            })
+            this.loadPageMec = false;
+            if (res.Data.HasNextPage) {
+              this.mecLoading = false;
+            } else {
+              this.mecLoading = true;
+            }
+          });
+        }, 2500);
+      },
+    },
+
+    created() {
+    },
+    mounted() {
+      // 医生工作室
+      let params = {
+        "PageIndex": this.docPageIndex,
+        "PageSize": this.PageSize,
+        "CustomerTypeId": 1,
+      };
+      this.api.getWorkRooms(params).then(res => {
+        for (let i = 0; i < res.Data.Data.length; i++) {
+          var item = res.Data.Data[i];
+          item.fraction = item.Grade / 2;
+          if (String(item.fraction).indexOf(".") > -1) {
+            item.solidGrade = parseInt(item.fraction);
+            item.harfGrade = true;
+            item.hollowGrade = 4 - item.solidGrade;
+          } else {
+            item.solidGrade = item.fraction;
+            item.fraction = item.fraction + ".0";
+            item.harfGrade = false;
+            item.hollowGrade = 5 - item.solidGrade;
+          }
+          if (item.AdeptField == null || item.AdeptField == "") {
+            item.Good = [];
+          } else {
+            item.Good = item.AdeptField.split(" ");
+          }
+          item.showTitleContent = item.Name ? item.Name.replace("医生工作室", "") : "";
+          this.studioDocList.push(item);
+        }
+        if (res.Data.HasNextPage) {
+          this.docLoading = false;
+        } else {
+          this.docLoading = true;
+        }
+      });
+      // 机构直播间
+      let mecParams = {
+        "PageIndex": this.mecPageIndex,
+        "PageSize": this.PageSize,
+        "CustomerTypeId": 4,
+      };
+      this.api.getWorkRooms(mecParams).then(res => {
+        this.studioMecList = res.Data.Data;
+        if (res.Data.HasNextPage) {
+          this.mecLoading = false;
+        } else {
+          this.mecLoading = true;
+        }
+        this.init = true;
+      });
+    },
+
+  };
+</script>
+
+<style scoped lang="scss">
+  @import '../../common/style.css';
+
+  .users-bg3-l {
+    text-align: -webkit-center;
+  }
+
+  .users-bg3-r {
+    text-align: -webkit-center;
+  }
+
+  .users-bg3-f {
+    font-size: 2.0rem;
+  }
+
+  .users-bg3-f.is-selected {
+    width: fit-content;
+    color: #26a2ff;
+    border-bottom: 2px solid #03a9f4;
+  }
+
+  .live-talent {
+    text-align: left;
+    position: fixed;
+    width: 100%;
+    overflow: scroll;
+  }
+
+  .LiveTalent {
+    .users-bg3 {
+      height: 50px;
+      padding: 0;
+      margin-bottom: 0;
+      position: fixed;
+      z-index: 2;
+    }
+    .live-talent-doc {
+      .gzs-ys-l {
+        height: 80%;
+        margin-left: 5px;
+        .gzs-ys-l-img {
+          height: 100%;
+          background-size: cover;
+          background-position: center center;
+          background-repeat: no-repeat;
+        }
+      }
+      .gzs-ys-r {
+        width: 67%;
+        .gzs-ys-r1 {
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+          position: relative;
+          height: 26px;
+          .doctor-name {
+            float: left;
+            color: black;
+            font-size: 1.8rem;
+          }
+          .doctor-suffix {
+            font-size: 1.2rem;
+            color: #757575;
+            margin: 4px 0 0 5px;
+          }
+        }
+      }
+      .gzs-ys-rr {
+        width: 28px;
+      }
+      .gzs-tab {
+        text-align: left;
+        margin-bottom: 0;
+      }
+    }
+    .live-talent-mec {
+      .gzs-ys {
+        margin-bottom: 1px;
+      }
+      .gzs-ys-l {
+        height: 80%;
+        margin-left: 5px;
+        .gzs-ys-l-img {
+          height: 70%;
+          background-size: cover;
+          background-position: center center;
+          background-repeat: no-repeat;
+          width: 76px;
+          height: 76px;
+          border-radius: 76px;
+        }
+      }
+      .gzs-ys-r {
+        width: calc(100% - 110px);
+        height: 80%;
+        .gzs-ys-r1 {
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+          margin-top: 5%;
+          .mec-name {
+            float: left;
+            font-size: 1.5rem;
+            width: calc(100% - 20px);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            font-weight: 600;
+          }
+          .guide-to-detail {
+            float: right;
+            img {
+              width: 10px;
+            }
+          }
+        }
+        pre {
+          font-size: 1.2rem;
+          display: -webkit-box;
+          overflow: hidden;
+          white-space: normal !important;
+          text-overflow: ellipsis;
+          word-wrap: break-word;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          max-height: 20px;
+        }
+      }
+    }
+  }
+</style>

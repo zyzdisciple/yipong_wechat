@@ -1,0 +1,101 @@
+<template>
+<div class="MyCollectionVideo" v-show="init">
+    <div class="mint-content" :key="index" v-for="(item,index) in list" v-if="list.length > 0">
+        <div class="mint-content-video">
+            <video-element
+              :videoUrl = "item.CloudUrl"
+              :posterImageUrl = "item.VideoImageUrl"
+              :listenPlayCount = "false"
+            ></video-element>
+          <div class="mint-content-video-titlebg" style="z-index:1">
+                <div class="mint-content-video-title" style="text-align:left;width:300px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;">{{item.VideoName}}</div>
+            </div>
+        </div>
+        <div class="gzs-ys-rr" style="width:auto;padding-top:10px;">
+            <button @click="cancelCollection(item.Id)" class="button-primary-gz">取消收藏</button>
+        </div>
+        <div class="mint-content-video-banner">
+            <div class="mint-content-video-share" @click="videoDetail(item.Id, item.VideoName)">
+                <div class="mint-content-video-share-view"><img src="../../images/view@1x.png">{{item.PreviewCount}}</div>
+            </div>
+            <div class="mint-content-video-share" @click="videoDetail(item.Id, item.VideoName)">
+                <div class="mint-content-video-share-view"><a><img src="../../images/chat@1x.png"></a>{{item.CommentCount}}</div>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<script>
+import videoElement from '../video/VideoElement';
+import { Indicator } from 'mint-ui';
+export default {
+    components: {
+        videoElement
+    },
+    data() {
+        return {
+            list: [],
+            PageIndex: 0,
+            PageSize: 5,
+            init: false,
+        };
+    },
+    methods: {
+        //视频详情
+        videoDetail(VideoID, shareTitle) {
+            shareTitle = shareTitle ? shareTitle : '视频详情';
+            this.$router.push({ path: '/VideoDetail/' + VideoID + '/' + shareTitle})
+        },
+        // 取消收藏
+        cancelCollection(VideoID) {
+            let params = {
+                "CollectID": VideoID,
+                "CollectType": 2,
+                "IsCollect":  false,
+            }
+            this.api.CollectVideo(params).then( res=> {
+                if(res.Result == 1) {
+                    for(let i=0;i<this.list.length;i++) {
+                        if(VideoID == this.list[i].Id) {
+                            this.list.splice(i, 1);
+                        }
+                    }
+                } else {
+                    Toast("取消收藏失败，请稍后再试！");
+                }
+            });
+        },
+        loadData(initLoad) {
+            this.PageIndex = initLoad ? 1 : this.PageIndex + 1;
+            let params = {
+              "PageIndex": this.PageIndex,
+              "PageSize": this.PageSize,
+            };
+            if (initLoad) {
+                Indicator.open();
+            }
+            this.api.getVedioCollectList(params).then(res => {
+                if (initLoad) {
+                    this.list = res.Data;
+                    Indicator.close();
+                } else if (res.Data && res.Data.length > 0) {
+                    res.Data.forEach(item => {
+                        this.list.push(item);
+                    })
+                } else {
+                    this.$emit('changeAllLoadStatus');
+                }
+                this.init = true;
+            });
+        }
+    },
+    mounted() {
+        this.loadData(true);
+    },
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../common/style.css';
+</style>

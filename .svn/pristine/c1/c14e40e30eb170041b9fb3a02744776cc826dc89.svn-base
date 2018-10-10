@@ -1,0 +1,238 @@
+<template>
+  <div class="create-online-consult">
+    <div v-if="showDiv == '0'">
+      <div class="title">
+        <mt-cell title="咨询标题">
+          <mt-field v-model="qTitle" placeholder="请输入标题"></mt-field>
+          <img slot="icon" src="../images/cube.png" width="24" height="24" style="margin:0px 2% 0px -10%;">
+        </mt-cell>
+      </div>
+      <mt-cell title="咨询内容">
+        <img slot="icon" src="../images/bljs.png" width="24" height="24" style="margin: 0px 1% 0px -65%;">
+      </mt-cell>
+      <mt-field placeholder="请输入咨询内容" v-model="qContent" type="textarea" rows="4"></mt-field>
+      <div @click="selectHealthRecord()">
+        <mt-cell
+          title="患者姓名"
+          is-link
+          :value="healthRecordName"
+        >
+          <img slot="icon" src="../images/jkda-user.png" width="24" height="24" style="margin: 0px 1% 0px -65%;">
+        </mt-cell>
+      </div>
+
+      <div>
+        <mt-button type="primary" @click="createOnlineConsult()">确定</mt-button>
+      </div>
+      <div class="toast">
+        <mt-popup
+          v-model="popupVisible"
+          style="width: 100%;"
+          position="bottom">
+          <div class="tips-inner" style="width: 100%; height: 100%;">
+            <div v-if="healthList.length > 0">
+              <div class="health-list">
+                <div clss="mint-cell" :key="Index" v-for="(Item,Index) in healthList">
+                  <div class="info" @click="chooseHealthRecord(Item.Id, Item.Name)">
+                    <div style="float: left;width: 40%;">
+                      <mt-cell title="姓名" :value="Item.Name"></mt-cell>
+                    </div>
+                    <div style="float: left;width: 30%;">
+                      <mt-cell title="性别" value="男" v-if="Item.Sex == 0"></mt-cell>
+                      <mt-cell title="性别" value="女" v-else></mt-cell>
+                    </div>
+                    <div style="float: left;width: 30%;">
+                      <mt-cell title="年龄" :value="Item.Age"></mt-cell>
+                    </div>
+                  </div>
+                  <hr/>
+                </div>
+              </div>
+            </div>
+            <div v-else>
+              <div @click="createHealthFile()">去创建</div>
+            </div>
+            <div class="cancel-popup">
+              <div @click="closeModal()">取消</div>
+            </div>
+          </div>
+        </mt-popup>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+  import {Toast} from 'mint-ui';
+  import {setStore, getStore} from '../store/mlocalstorge';
+  import store from "../store";
+  export default {
+    data () {
+      return {
+        showDiv: '0',
+        healthList: [],
+        popupVisible: false,
+        healthRecordId: '',
+        healthRecordName: '',
+        qTitle: '',
+        qContent: '',
+        userInfo: {}
+      }
+    },
+    methods: {
+      selectHealthRecord() {
+        this.popupVisible = true
+      },
+      chooseHealthRecord(id, name) {
+        this.healthRecordId = id;
+        this.healthRecordName = name;
+        this.popupVisible = false;
+      },
+      createHealthFile() {
+        this.$router.push({path: '/MyHealthFile/0/1'})
+      },
+      createOnlineConsult() {
+        if (this.qTitle.trim() == '') {
+          Toast('请输入标题');
+          return;
+        }
+        if (this.qContent.trim() == '') {
+          Toast('请输入咨询内容');
+          return;
+        }
+        if (this.healthRecordId == '') {
+          Toast('请选择有效健康档案');
+          return;
+        }
+
+        let consultParams = {
+          ConsultTypeId: this.$route.params.consultTypeId,
+          Title: this.qTitle,
+          WorkRoomId: this.$route.params.workRoomId,
+          Content: this.qContent,
+          CustomerId: this.$route.params.customerId,
+          CustomerHealthyRecordId: this.healthRecordId
+        }
+
+        var params = {
+          uid: this.userInfo.YunXinUserName,
+          sdktoken: this.userInfo.YunXinToken,
+          nick: this.userInfo.Nickname,
+          avatar: this.userInfo.UserHeaderImageUrl
+        }
+
+        this.api.createCustomerOnlineConsult(consultParams).then(res => {
+          if (res.Data.Existed) {
+            Toast("您有一个进行中的咨询,请完成后再进行创建");
+          } else {
+            this.$store.state.userInfos[res.Data.PatientNetEasyId] = params;
+            this.api.getMyHomePage({UserId: res.Data.CustomerId}).then(res2 => {
+              if (res2.Data.AvatarUrl == "") {
+                res2.Data.AvatarUrl = this.$store.state.yipong.UserHeaderImageUrl;
+              }
+              this.$store.state.userInfos[res.Data.DoctorNetEasyId] = {
+                nick: res2.Data.NikeName,
+                avatar: res2.Data.AvatarUrl
+              }
+            })
+            if (res.Data.Expense - 0 == 0) {
+              //初始化NIM
+              this.$store.dispatch('connect', params);
+              this.$store.state.myInfo = params;
+              this.$store.dispatch('updateRefreshState');
+              this.$router.push({path: '/OnlineConsult/p2p-' + res.Data.DoctorNetEasyId + '/' + res.Data.EndDateTime});
+            } else {
+              var pageParams = {
+                amount: this.$route.params.amount,
+                doctorId: res.Data.DoctorNetEasyId,
+                funcName: 'onlineConsult',
+                endDateTime: res.Data.EndDateTime,
+                referToId: res.Data.Id,
+                changeTypeId: '2308',
+                paymentTypeId: '902',
+                reforToTypeId: '0'
+              }
+              this.$router.push({name: '直接支付', query: pageParams});
+            }
+          }
+        })
+      },
+      closeModal () {
+        this.popupVisible = false;
+      },
+    },
+    mounted() {
+      let userinfo = window.localStorage.getItem("userInfo");
+      userinfo = JSON.parse(userinfo);
+      let params = {
+        "Id": userinfo.UserId,
+        "PageIndex": 1,
+        "PageSize": 100,
+      };
+      this.api.getCustomerHealgthyRecords(params).then(res => {
+        this.healthList = res.Data.Data;
+      });
+
+      this.userInfo = getStore("userInfo");
+
+      if (this.$route.params.consultTypeId == 1) {
+        document.title = "创建在线咨询"
+      } else if (this.$route.params.consultTypeId == 2) {
+        this.$route.meta.title = "创建康复指导"
+      }
+    },
+  }
+
+</script>
+<style lang="scss">
+  .create-online-consult .mint-field-core {
+    text-align: right;
+    font-size: 1.5rem;
+    font-weight: 200;
+  }
+
+  .create-online-consult .title .mint-cell-value {
+    width: 60%;
+  }
+
+  .create-online-consult .mint-cell-value textarea {
+    background-color: #F2F2F2;
+    font-size: 1.4rem;
+    font-family: "微软雅黑";
+    text-align: left;
+    height: 110px;
+    border-radius: 10px;
+    resize: none;
+  }
+
+  .create-online-consult {
+    height: 100%;
+    background-color: #F2F2F2;
+  }
+
+  .create-online-consult .mint-button--primary {
+    width: 92%;
+    margin-top: 20%;
+  }
+
+  .create-online-consult .toast {
+    width: 100%
+  }
+
+  .create-online-consult .toast .info {
+    width: 100%;
+  }
+
+  .create-online-consult .toast .cancel-popup {
+    height: 35px;
+    line-height: 30px;
+  }
+
+  .create-online-consult .toast hr {
+    border: none;
+    border-top: solid #F2F2F2 0.01rem;
+    width: 96%;
+    -webkit-margin-before: 0;
+    -webkit-margin-after: 0;
+  }
+
+</style>

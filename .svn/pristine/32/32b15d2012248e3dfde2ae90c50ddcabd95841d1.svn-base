@@ -1,0 +1,350 @@
+
+<template>
+    <div class="user-detail" v-if="1">
+      <div class="page-wrap tabb">
+      <div class="mint-content">
+          <div class="users-bg2" style="padding:10px 0;background:linear-gradient(to right, #518ffc, #03a9f4);">
+              <div class="users-bg2-l" style="width:100px;position: absolute;z-index: 999;">
+                  <input type="file" @change="changeAvatar" accept="image/*" style="z-index: 1000;opacity:0;width: 80px;height: 80px;margin-left: 20px"/>
+              </div>
+              <div class="users-bg2-l" style="padding:35px 0 35px 10px;z-index: 1;">
+                  <div v-bind:style="{backgroundImage:'url(' + headUrl + ')'}" style="margin-left:10px;width: 80px;height: 80px;border-radius:80px;background-position: center center;background-size: cover;background-repeat: no-repeat"></div>
+              </div>
+              <div @click="UserInformation" class="users-bg2-c user-info-name">{{nickName}}</div>
+               <div @click="UserInformation" class="users-bg2-r" style="width: 10%;"><img src="../../images/users-djt.png"></div>
+          </div>
+      </div>
+      <div class="users-bg3" style="padding:0">
+          <div class="users-bg3-l">
+              <img src="../../images/users-yue.png">
+              <div class="users-bg3-f">余额<br><span class="../../users-bg3-sf">￥{{Balance}}</span></div>
+          </div>
+          <div class="users-bg3-r">
+            <img src="../../images/users-card.png">
+            <div class="users-bg3-f">会员卡<br><span class="users-bg3-sf"></span></div>
+          </div>
+      </div>
+      <div class="users-list1" style="padding:8px 0" @click="MyAttention">
+        <div class="users-listcd-l">
+          <img src="../../images/wdgz.png">
+        </div>
+        <div class="users-listcd-r" style="text-align:left">我的关注</div>
+        <div class="users-list1-jt">
+          <img src="../../images/user-listjt.png">
+        </div>
+      </div>
+      <div class="users-list1" style="padding:8px 0" @click="MyCollection">
+        <div class="users-listcd-l">
+          <img src="../../images/wdsc.png">
+        </div>
+        <div class="users-listcd-r" style="text-align:left">我的收藏</div>
+        <div class="users-list1-jt">
+          <img src="../../images/user-listjt.png">
+        </div>
+      </div>
+      <div class="users-list1" style="padding:8px 0" @click="MyAdvisory" >
+        <div class="users-listcd-l">
+          <img src="../../images/wdzx.png">
+        </div>
+        <div class="users-listcd-r" style="text-align:left">我的咨询</div>
+        <div class="users-list1-jt">
+          <img src="../../images/user-listjt.png">
+        </div>
+      </div>
+      <div class="users-list1" style="padding:8px 0" @click="MyHealthList">
+        <div class="users-listcd-l">
+          <img src="../../images/jkda.png">
+        </div>
+        <div class="users-listcd-r" style="text-align:left">健康档案</div>
+        <div class="users-list1-jt">
+          <img src="../../images/user-listjt.png">
+        </div>
+      </div>
+      <div class="nav">
+        <div class="mint-tabbar is-fixed" style="z-index:999">
+            <a class="mint-tab-item" @click="videoHome()">
+                <div class="mint-tab-item-icon"><img src="../../images/main-nav-1-0.png"></div>
+                <div class="mint-tab-item-label">
+                    视频
+                </div>
+            </a>
+            <a class="mint-tab-item" @click="liveHome">
+                <div class="mint-tab-item-icon"><img src="../../images/main-nav-2-0.png"></div>
+                <div class="mint-tab-item-label">
+                    直播
+                </div>
+            </a>
+            <a class="mint-tab-item" @click="findHome(1)"  v-if="IsCertificate">
+                <div class="mint-tab-item-icon"><img src="../../images/main-nav-3-0.png"></div>
+                <div class="mint-tab-item-label">
+                    工作室
+                </div>
+            </a>
+            <a class="mint-tab-item" @click="findHome(0)"  v-else>
+                <div class="mint-tab-item-icon"><img src="../../images/main-nav-3-0.png"></div>
+                <div class="mint-tab-item-label">
+                    找医生
+                </div>
+            </a>
+            <a class="mint-tab-item is-selected" @click="myHome">
+                <div class="mint-tab-item-icon"><img src="../../images/main-nav-4-1.png"></div>
+                <div class="mint-tab-item-label">
+                    我的
+                </div>
+            </a>
+        </div>
+      </div>
+      <div class="v-simple-cropper">
+        <div class="v-cropper-layer" ref="layer">
+          <div class="layer-header" style="height:8%;background-color:#000;padding-bottom: 1px;">
+            <button style="float:left;height:100%;width:49%;border:solid 1px #03a9f4;background-color:#03a9f4;" @click="cancelHandle">取消</button>
+            <button style="float:right;height:100%;width:49%;border:solid 1px #03a9f4;background-color:#03a9f4;" @click="confirmHandle">裁剪</button>
+          </div>
+          <img ref="cropperImg" style="float: inherit!important;">
+        </div>
+      </div>
+    </div>
+    </div>
+</template>
+ <script scoped>
+import Modal from '@/components/modal/Modal';
+import { getStore, removeStore } from '../../store/mlocalstorge';
+import * as constant from '../../configs/constant';
+import { Toast } from 'mint-ui';
+import Cropper from 'cropperjs'
+import 'cropperjs/dist/cropper.min.css'
+export default {
+    data() {
+        return {
+            init: false,
+            headUrl: require('../../assets/default_avatar.png'),
+            nickName: "",
+            Balance: 0,
+            imgPreview: "",
+            IsCertificate:  false,
+            cropper: '',
+            filename: '',
+            userID: 0,
+        };
+    },
+    components: {
+        Modal
+    },
+    methods: {
+        // 个人信息
+        UserInformation() {
+            if(this.userId == 0) {
+                Toast("用户账户信息失效，请关闭浏览器重新进入");
+                return;
+            }
+            this.$router.push({ name: '个人信息' });
+        },
+        // 我的关注
+        MyAttention() {
+            if(this.userId == 0) {
+                Toast("用户账户信息失效，请关闭浏览器重新进入");
+                return;
+            }
+            this.$router.push({ name: '我的关注' });
+        },
+        // 我的咨询
+        MyAdvisory() {
+            if(this.userId == 0) {
+                Toast("用户账户信息失效，请关闭浏览器重新进入");
+                return;
+            }
+            this.$router.push({ name: '我的咨询' });
+        },
+        // 我的收藏
+        MyCollection() {
+            if(this.userId == 0) {
+                Toast("用户账户信息失效，请关闭浏览器重新进入");
+                return;
+            }
+            this.$router.push({ name: '我的收藏' });
+        },
+        // 健康档案
+        MyHealthList() {
+            if(this.userId == 0) {
+                Toast("用户账户信息失效，请关闭浏览器重新进入");
+                return;
+            }
+            this.$router.push({ name: '健康档案' });
+        },
+        videoHome() {
+            this.$router.push({ name: '主页' });
+        },
+        liveHome() {
+            this.$router.push({ name: '直播' });
+        },
+        findHome(flag) {
+            // 判断医生或者患者
+            if(flag == 1) {
+                window.location.href ='http://weixin.yipong.com/DownLoad/index.html';
+            } else {
+              this.$router.push({ name: '找医生' });
+            }
+        },
+        myHome() {
+            //点击我的主页不刷新页面
+        },
+        // 初始化裁剪插件
+        initAvatar() {
+          let cropperImg = this.$refs['cropperImg']
+          this.cropper = new Cropper(cropperImg, {
+            viewMode:1,
+            aspectRatio: 1,
+            dragMode: "move",
+            background: false,
+            autoCrop: true,
+            center: true,
+          })
+        },
+        // 头像替换
+        changeAvatar: function(e) {
+          if(this.userId == 0) {
+              Toast("用户账户信息失效，请关闭浏览器重新进入");
+              return;
+          }
+          if(e.target.files.length > 1) {
+            Toast("最多可以上传1张图片");
+            return;
+          }
+          let file = e.target.files[0]
+          this.filename = file['name']
+          let URL = window.URL || window.webkitURL
+          this.$refs['layer'].style.display = 'block';
+          if(this.cropper){
+              this.cropper.replace(URL.createObjectURL(file));
+          }
+        },
+        // 取消上传
+        cancelHandle () {
+          this.cropper.reset()
+          this.$refs['layer'].style.display = 'none'
+          this.$refs['file'].value = ''
+        },
+        // 确定上传
+        confirmHandle () {
+          let cropBox = this.cropper.getCropBoxData()
+          let scale = 1
+          let cropCanvas = this.cropper.getCroppedCanvas({
+            width: cropBox.width * scale,
+            height: cropBox.height * scale
+          })
+          let imgData = new Image();
+          imgData.src = cropCanvas.toDataURL('image/jpeg', 1.0);
+          var arr = imgData.src.split(',');
+          var mime = arr[0].match(/:(.*?);/)[1];
+          var bstr = atob(arr[1]);
+          var n = bstr.length;
+          var u8arr = new Uint8Array(n);
+          while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          let file1 =  new File([u8arr], this.filename, {type:mime});;
+          let params = new FormData();
+          params.append(this.filename, file1);
+          this.api.uploadFile(params).then( res => {
+            this.$refs['layer'].style.display = 'none';
+            if(res.Result == 1) {
+              this.api.avatar({"Avatar":res.Data[0]}).then( res => {
+                if(res.Result == 1) {
+                  Toast("头像修改成功！");
+                  this.loadHeadUrl();
+                } else{
+                  Toast("头像修改失败，请稍后再试!");
+                }
+              });
+            } else {
+              Toast("图片上传失败！");
+            }
+          });
+        },
+      loadHeadUrl() {
+        let userInfo = window.localStorage.getItem("userInfo");
+        userInfo = JSON.parse(userInfo);
+        this.api.getMyHomePage({"UserId": userInfo.UserId}).then(res => {
+          this.nickName = res.Data.NikeName;
+          if (res.Data.AvatarUrl != '' && res.Data.AvatarUrl != null) {
+            this.headUrl = res.Data.AvatarUrl;
+          }
+        });
+        }
+    },
+    computed: {},
+    mounted() {
+      this.$store.state.hideShareButton++;
+        this.initAvatar();
+        // 我的基本信息
+        let userinfo = window.localStorage.getItem("userInfo");
+        userinfo = JSON.parse(userinfo);
+        if(userinfo.UserId > 0) {
+            this.userId = 1;
+        }
+        // 判断当前进入人员的类型
+        this.api.myStatus({}).then( res => {
+            this.IsCertificate = res.Data.IsCertificate;
+            this.init = true;
+        });
+      this.loadHeadUrl();
+        // 钱包余额
+        this.api.getMyWallet({}).then( res => {
+            this.Balance = res.Data.Balance;
+        });
+    },
+}
+</script>
+<style scoped lang="scss">
+@import '../../common/style.css';
+.v-simple-cropper {}
+.file {
+  display: none;
+}
+
+.user-info-name {
+  width:calc(80% - 100px);
+  margin-left: 10px;
+  overflow: hidden;
+  word-break: break-all;
+  height: 30px;
+  margin-top: 60px;
+  padding: 0;
+}
+.v-cropper-layer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  z-index: 99999;
+  display: none;
+}
+.layer-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 99999;
+  background: #fff;
+  width: 100%;
+  height: .8rem;
+  padding: 0 .2rem;
+  box-sizing: border-box;
+}
+.confirm {
+  line-height: .8rem;
+  font-size: .28rem;
+  background: inherit;
+  border: 0;
+  outline: 0;
+  float: left;
+}
+.confirm {
+  float: right;
+}
+img {
+  position: inherit!important;
+  border-radius: inherit!important;
+}
+</style>

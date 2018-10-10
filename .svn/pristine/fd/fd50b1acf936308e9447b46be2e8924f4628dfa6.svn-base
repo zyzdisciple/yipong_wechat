@@ -1,0 +1,284 @@
+<template>
+    <div class="g-window" v-show="init">
+      <div name="page-top"></div>
+      <div class="chat-info">
+        <div class="g-inherit m-article" style="padding-top: 21px;">
+          <div class="m-chat-main">
+            <chat-list
+              type="session"
+              :msglist="msglist"
+              :userInfos="userInfos"
+              :myInfo="myInfo"
+              @msgs-loaded="msgsLoaded"
+            ></chat-list>
+          </div>
+        </div>
+        <div :class="{show: !evaluate, edit: evaluate}">
+          <div v-if="evaluate && !notCreate">
+            <div @click="showConsult()" class="show-consult">评价</div>
+            <mt-popup
+              v-model="popupVisible"
+              position="bottom">
+              <div>
+                <ConsultEvaluate
+                  :consultId="currentId"
+                  :workRoomId="currentWorkRoomId"
+                  :consultTypeId="consultTypeId"
+                  @change-modal="closeModal"
+                >
+                </ConsultEvaluate>
+              </div>
+            </mt-popup>
+          </div>
+          <div v-if="!evaluate">
+            <div @click="showConsult()" class="show-consult">查看评价</div>
+            <mt-popup
+              v-model="popupVisible"
+              position="bottom">
+                <div>
+                  <ConsultEvaluateShow
+                    :consultId="currentId"
+                    :workRoomId="currentWorkRoomId"
+                    :consultTypeId="consultTypeId"
+                    @change-modal="closeModal"
+                  >
+                  </ConsultEvaluateShow>
+                </div>
+            </mt-popup>
+          </div>
+        </div>
+      </div>
+    </div>
+</template>
+<script>
+  import ChatList from './ChatList'
+  import util from '../../utils'
+  import pageUtil from '../../utils/page'
+  import ConsultEvaluateShow from '../user/ConsultEvaluateShow'
+  import ConsultEvaluate from '../user/ConsultEvaluate'
+
+  export default {
+      components: {
+        ChatList,
+        ConsultEvaluateShow,
+        ConsultEvaluate
+      },
+      data() {
+          return {
+            msglist: [],
+            userInfos: {},
+            myInfo: {},
+            popupVisible: false,
+            evaluate: false,
+            notCreate: true,
+            consultTypeId: -1,
+            init: false,
+          }
+      },
+      computed: {
+          currentId() {
+              return this.$route.params.consultId / 1;
+          },
+          currentWorkRoomId() {
+              return this.$route.params.workRoomId / 1;
+          },
+      },
+      updated () {
+//        pageUtil.scrollChatListDown()
+      },
+      methods: {
+          msgsLoaded () {
+//              pageUtil.scrollChatListDown()
+          },
+          showConsult() {
+              this.popupVisible = true;
+          },
+          closeModal(data) {
+              this.popupVisible = data;
+          },
+          generateYunXinMsg(srcMsg, myYxId, doctorYxId, patientYxId) {
+              var formatMsg = {};
+              var toYxId, isThird;
+              var file = {};
+
+              if (myYxId != doctorYxId && myYxId != patientYxId) {
+                  isThird = true;
+              }
+
+              toYxId = srcMsg.from == patientYxId ? doctorYxId : patientYxId;
+
+              //云信消息的from 一定是 srcMsg的from
+              formatMsg.from = srcMsg.from;
+              formatMsg.to = toYxId;
+              formatMsg.text = srcMsg.body.msg;
+              formatMsg.scene = 'p2p';
+              formatMsg.time = srcMsg.sendtime;
+              switch (srcMsg.type) {
+                case 0:
+                  formatMsg.type = 'text';
+                  break;
+                case 1:
+                  formatMsg.type = 'image';
+                  file.url = srcMsg.body.url;
+                  formatMsg.file = file;
+                  break;
+                case 2:
+                  formatMsg.type = 'audio';
+                  file.mp3Url = srcMsg.body.url;
+                  file.dur = srcMsg.body.dur;
+                  formatMsg.file = file;
+                  break;
+                default:
+                  formatMsg.type = 'text';
+              }
+
+              if (isThird) {
+                  formatMsg.text = formatMsg.type == 'text' ? formatMsg.text : '图片/语音隐私问题无法显示';
+                  formatMsg.type = 'text'
+                  formatMsg.flow = srcMsg.from == patientYxId ? "out" : "in";
+              } else {
+                  formatMsg.flow = srcMsg.from == myYxId ? "out" : "in";
+              }
+              return formatMsg;
+          },
+          getYuXinHistoryMsg(to, start, end) {
+              var tempList = [];
+              var timeSpace = 300000;
+              var preTime = 0;
+              this.$store.dispatch('setCurrSession', 'p2p-' + to, false);
+
+              this.$store.state.nim.getHistoryMsgs({
+                  scene: 'p2p',
+                  to: to,
+                  beginTime: new Date(start.replace(/-/g, "/")).getTime(),
+                  endTime: new Date(end.replace(/-/g, "/")).getTime(),
+                  limit: 100,
+                  reverse: true,
+                  done: (error, obj) => {
+                      obj.msgs.forEach((item) => {
+                          if (item.time - preTime >= timeSpace) {
+                              var date = new Date(item.time);
+                              var month = (date.getMonth() + 1);
+                              month = month < 10 ? ("0" + month) : month;
+                              var day = date.getDate();
+                              day = day < 10 ? ("0" + day) : day;
+                              var hours = date.getHours();
+                              hours = hours < 10 ? ("0" + hours) : hours;
+                              var minutes = date.getMinutes()
+                              minutes = minutes < 10 ? ("0" + minutes) : minutes;
+                              var text = date.getFullYear() + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
+                              tempList.push({type: 'timeTag', text: text});
+                          }
+                          tempList.push(item);
+                          preTime = item.time;
+                      })
+                      this.msglist = tempList;
+                  }
+              })
+          },
+      },
+      destroyed () {
+        this.$store.dispatch('resetCurrSession');
+        document.documentElement.style.fontSize = "62.5%";
+      },
+      mounted () {
+        document.documentElement.style.fontSize = "100%";
+          //获取聊天咨询详情
+          this.$store.dispatch('showLoading');
+          this.api.getCustomerOnlineConsult({Id: this.$route.params.consultId}).then(res => {
+              //获取咨询类型
+              if (res.Data.ConsultTypeId == 1) {
+                  this.consultTypeId = 2105;
+              } else if (res.Data.ConsultTypeId == 2) {
+                  this.consultTypeId = 2107;
+              } else if (res.Data.ConsultTypeId == 3) {
+                  this.consultTypeId = 2108;
+              }
+
+              this.evaluate = !res.Data.IsEvaluated;
+              let userinfo = JSON.parse(window.localStorage.getItem("userInfo"));
+              //是否非创建人查看
+              if (userinfo.YunXinUserName == res.Data.PatientNetEasyId) {
+                  this.notCreate = false;
+              }
+
+              if (!this.notCreate) {
+                  //创建人
+                  this.getYuXinHistoryMsg(res.Data.DoctorNetEasyId, res.Data.StartDateTime, res.Data.EndDateTime);
+              } else if (userinfo.YunXinUserName == res.Data.DoctorNetEasyId) {
+                  this.getYuXinHistoryMsg(res.Data.PatientNetEasyId, res.Data.StartDateTime, res.Data.EndDateTime);
+              } else {
+                  this.api.getCustomerOnlineConsultSessionMsg({
+                      CustomerNetEasyId: res.Data.DoctorNetEasyId,
+                      ConsultCustomerNetEasyId: res.Data.PatientNetEasyId,
+                      limit: 100,
+                      StartTime: new Date(res.Data.StartDateTime.replace(/-/g, "/")).getTime(),
+                      EndTime: new Date(res.Data.EndDateTime.replace(/-/g, "/")).getTime()
+                  }).then(res2 => {
+                      var timeSpace = 300000;
+                      var preTime = 0;
+                      for (var key in res2.Data) {
+                          var formatMsg;
+                          //加入时间戳
+                          if (res2.Data[key].sendtime - preTime >= timeSpace) {
+                            var date = new Date(res2.Data[key].sendtime);
+                            var text = date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate() + ' ' + date.getHours() + ':' + date.getMinutes();
+                            this.msglist.push({type: 'timeTag', text: text});
+                          }
+
+                          formatMsg = this.generateYunXinMsg(res2.Data[key], userinfo.YunXinUserName, res.Data.DoctorNetEasyId, res.Data.PatientNetEasyId);
+                          this.msglist.push(formatMsg);
+                          preTime = res2.Data[key].sendtime;
+
+                      }
+                  });
+              }
+
+              //设置个人信息
+              this.myInfo = {
+                  nick: res.Data.CreatedCustomerNickName,
+                  avatar: res.Data.CreatedCustomerHeaderImgUrl != '' ? res.Data.CreatedCustomerHeaderImgUrl : this.$store.state.yipong.UserHeaderImageUrl,
+              }
+              this.userInfos[res.Data.PatientNetEasyId] = this.myInfo;
+              //设置医生信息
+              this.userInfos[res.Data.DoctorNetEasyId] = {
+                  nick: res.Data.WorkRoomCustomerNickName,
+                  avatar: res.Data.WorkRoomCustomerHeaderImgUrl  != '' ? res.Data.WorkRoomCustomerHeaderImgUrl : this.$store.state.yipong.UserHeaderImageUrl,
+              }
+
+              this.$store.state.userUID = res.Data.PatientNetEasyId;
+
+              this.$store.dispatch('hideLoading');
+              this.init = true;
+          })
+      }
+  }
+</script>
+<style scoped>
+  @import '../../common/chat/theme.css';
+  .chat-info .show-consult {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+      background: #469EF1;
+      color: white;
+    font-size: 1.5rem;
+      height: 40px;
+      line-height: 30px;
+      padding-top: 10px;
+  }
+  .g-window .show .mint-popup{
+      height: 60%;
+      position: fixed;
+      top: 40%;
+      width: 100%;
+  }
+
+  .g-window .edit .mint-popup{
+      height: 90%;
+      position: fixed;
+      top: 10%;
+      width: 100%;
+  }
+</style>

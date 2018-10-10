@@ -1,0 +1,830 @@
+<template>
+  <div class="page-infinite-wrapper" ref="wrapper" :style="{ height: wrapperHeight + 'px' }">
+    <div class="page-infinite-list">
+      <div ref="videoSearch" class="videoSearch">
+        <div class="mint-searchbar searchBG1">
+          <div style="width:100%">
+            <div class="mint-searchbar-inner searchBG2">
+              <i class="mintui mintui-search" style="margin-top:3px"></i>
+              <form action="" style="width: 100%">
+                <input type="search" v-model="searchContent" placeholder="请输入关键字搜索医生"
+                       class="mint-searchbar-core" @keyup.enter="searchName"
+                       style="margin-left:2px;font-size: 1.4rem;">
+                <input class="just-for-no-refresh" type="text" style="display:none"/>
+              </form>
+            </div>
+            <a class="mint-searchbar-cancel" style="display: none;">取消</a>
+            <div class="mint-searchbar searchBG1">
+              <div style="width:30%;margin:2px 1% 2px 1.5%" @click=areaClick><img src="../../images/up2.png"
+                                                                                  style="width:20%">地域
+              </div>
+              <div style="width:30%;margin:2px 1% 2px 1%" @click=subjectClick><img src="../../images/up2.png"
+                                                                                   style="width:20%">科室
+              </div>
+              <div style="width:30%;margin:2px 1.5% 2px 1%" @click=chooseClick><img src="../../images/up2.png"
+                                                                                    style="width:20%">筛选
+              </div>
+            </div>
+            <div style="text-align:left">
+              <div id="area" v-show="areaShow">
+                <div>
+                  <div :class="allArea" style="padding: 10px 0 10px 5px;border-bottom: 1px solid #eee"
+                       @click="chooseArea(1)">全国
+                  </div>
+                  <div :class="departArea" style="padding: 10px 0 10px 5px;border-bottom: 1px solid #eee"
+                       @click="chooseArea(2)">当地
+                  </div>
+                </div>
+              </div>
+              <div id="subject" v-show="subjectShow" style="height: 200px;overflow-y:scroll;">
+                <div :key="index" v-for="(item,index) in subjectList">
+                  <div :index="index" :class='{"choose-d": index == currentIndex}'
+                       style="padding: 10px 0 10px 5px;border-bottom: 1px solid #eee"
+                       @click="chooseStudio(item.SubjectName, index)">{{item.SubjectName}}
+                  </div>
+                </div>
+              </div>
+              <div id="choose" v-show="chooseShow" style="height: 250px;overflow-y:scroll;">
+                <div style="height: 60px;width: 100%;display: initial">
+                  <div>服务类型</div>
+                  <div style="height: 35px">
+                    <div @click="chooseType(1)" :class="serviceType1">在线咨询</div>
+                    <div @click="chooseType(2)" :class="serviceType2">康复指导</div>
+                    <div @click="chooseType(3)" :class="serviceType3">视频咨询</div>
+                    <div @click="chooseType(4)" :class="serviceType4">约面诊</div>
+                    <div @click="chooseType(5)" :class="serviceType5">约出诊</div>
+                  </div>
+                </div>
+                <div style="height: 60px;width: 100%;display: inline-block">
+                  <div>价格区间</div>
+                  <div style="height: 35px">
+                    <div @click="choosePrice(1)" :class="priceLong1">0-10</div>
+                    <div @click="choosePrice(2)" :class="priceLong2">11-30</div>
+                    <div @click="choosePrice(3)" :class="priceLong3">31-50</div>
+                    <div @click="choosePrice(4)" :class="priceLong4">50以上</div>
+                  </div>
+                </div>
+                <div style="height: 60px">
+                  <div>医生职称</div>
+                  <div style="height: 35px">
+                    <div @click="chooseTitle(1)" :class="titleName1">住院医师</div>
+                    <div @click="chooseTitle(2)" :class="titleName2">主治医师</div>
+                    <div @click="chooseTitle(3)" :class="titleName3">副主任医师</div>
+                    <div @click="chooseTitle(4)" :class="titleName4">主任医师</div>
+                  </div>
+                </div>
+                <div style="text-align:center">
+                  <button @click="resetChoose" class="button-left">重置</button>
+                  <button @click="enterChoose" class="button-right">确定</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-div" :style="scrollStyle" v-infinite-scroll="loadMore" infinite-scroll-disabled="loading"
+           infinite-scroll-immediate-check="false" infinite-scroll-distance="50">
+        <div v-if="inited">
+          <div v-if="studioList.length > 0">
+            <a :key="studioIndex" v-for="(studioItem,studioIndex) in studioList">
+              <div class="gzs-ys brw" @click="StudioDetail(studioItem.Id, studioItem.Name)" style="height: 160px;">
+                <div class="gzs-ys-l">
+                  <div class="gzs-ys-l-img"
+                       v-bind:style="{backgroundImage:'url(' + studioItem.Picture.Url + ')'}"></div>
+                </div>
+                <div class="gzs-ys-r" style="text-align:left;width:67%">
+                  <div class="gzs-ys-r1">
+                    <div class="doctor-name text-over-ellipsis">
+                      {{studioItem.showTitleContent}}
+                      <f class="doctor-suffix">医生工作室</f>
+                    </div>
+                  </div>
+                  <div class="gzs-ys-r2 text-over-ellipsis" style="width: 100%;">{{studioItem.Hospital}}</div>
+                  <div class="gzs-ys-r2">{{studioItem.Department}}·{{studioItem.Technical}}</div>
+                  <div class="gzs-ys-r3">从业{{studioItem.Seniority}}年</div>
+                  <div class="gzs-ys-r4">
+                    <img src="../../images/star1.png" v-for="n in studioItem.solidGrade">
+                    <img src="../../images/harfStar.png" v-if="studioItem.harfGrade">
+                    <img src="../../images/star0.png" v-for="n in studioItem.hollowGrade">
+                    {{studioItem.fraction}}
+                  </div>
+                </div>
+                <div class="gzs-ys-rr" style="width: 28px"><img src="../../images/gzs-jt1.png"></div>
+              </div>
+              <div class="gzs-tab brw" style="text-align: left">
+                <div class="gzs-tabxq" :key="adeptIndex" v-for="(adeptItem,adeptIndex) in studioItem.Good">
+                  {{adeptItem}}
+                </div>
+              </div>
+              <div class="doctor-room-bottom">
+                <img class="thanks-img" src="../../images/pl-zx.png"
+                     style="width: 6%;float: left;margin: 8px 0px 0px 18%;">
+                <span style="float: left;margin: 8px 0px 0px 6px;" @click="customerAdmire(studioItem.Id)">致谢</span>
+                <img class="ask-img" src="../../images/message-o.png"
+                     style="width: 6%;float: left;margin: 8px 0px 0px 18%;">
+                <span style="float: left;margin: 8px 0px 0px 6px;"
+                      @click="createOnlineConsult(studioItem.CustomerId, studioItem.Id, studioItem.IsOnlineConsult, studioItem.OnlineConsultExpense)">
+                            在线咨询
+                            <span v-if="studioItem.IsOnlineConsult">
+                              <span style="font-size: 1.4rem;" v-if="studioItem.OnlineConsultExpense > 0">
+                                ({{studioItem.OnlineConsultExpense}}元)
+                              </span>
+                              <span style="font-size: 1.4rem;" v-else>
+                                (免费)
+                              </span>
+                            </span>
+
+                        </span>
+              </div>
+            </a>
+          </div>
+
+          <p v-show="loadPage" class="page-infinite-loading">
+            <mt-spinner type="fading-circle"></mt-spinner>
+            加载中...
+          </p>
+          <p v-show="endPage" class="page-infinite-loading">
+            加载到底了！
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script scoped>
+  import VideoItem from '@/components/video/VideoItem';
+  import LiveItem from '@/components/livelist/LiveItem';
+  import {getStore, removeStore} from '../../store/mlocalstorge';
+  import {Toast} from 'mint-ui';
+  import * as constant from '../../configs/constant';
+  import {getJSSignature, getWXPayInfo} from '../../utils/WXPay'
+  export default {
+    components: {
+      VideoItem, LiveItem
+    },
+    data() {
+      return {
+        list: [],
+        allLoaded: false,
+        bottomStatus: '',
+        topStatus: '',
+        departArea: "",
+        allArea: "choose-d",
+        wrapperHeight: document.documentElement.clientHeight,
+        translate: 0,
+        moveTranslate: 0,
+        PageIndex: 1,
+        PageSize: 10,
+        currentIndex: 0,
+        serviceType1: "button-none",
+        serviceType2: "button-none",
+        serviceType3: "button-none",
+        serviceType4: "button-none",
+        serviceType5: "button-none",
+        priceLong1: "button-none",
+        priceLong2: "button-none",
+        priceLong3: "button-none",
+        priceLong4: "button-none",
+        titleName1: "button-none",
+        titleName2: "button-none",
+        titleName3: "button-none",
+        titleName4: "button-none",
+        searchContent: "",
+        studioList: [],
+        subjectList: [],
+        localName: "",
+        searchAreaName: 1,
+        searchSubjectName: "",
+        searchChooseTypeName: "",
+        searchChoosePriceName: "",
+        searchChooseTitleName: "",
+        areaShow: false,
+        subjectShow: false,
+        chooseShow: false,
+        loading: true,
+        loadPage: false,
+        endPage: false,
+        scrollStyle: {},
+        inited: false,
+      };
+    },
+    mounted() {
+      // 获取浏览器的地址
+      var cityName = "";
+      var _this = this;
+      var Longitude = "";
+      var Latitude = "";
+      getJSSignature();
+      wx.ready(() => {
+        wx.getLocation({
+          type: 'wgs84',
+          success: function (res) {
+            //转换
+            var convertor = new BMap.Convertor();
+            var list = []
+            list.push(new BMap.Point(res.longitude, res.latitude))
+            convertor.translate(list, 1, 5, function (data) {
+              if (data.status == 0) {
+                Longitude = data.points[0].lng
+                Latitude = data.points[0].lat
+                var point = new BMap.Point(Longitude, Latitude);
+                var gc = new BMap.Geocoder();
+                gc.getLocation(point, function (rs) {
+                  var addComp = rs.addressComponents;
+                  cityName = addComp.city;
+                  // 获取地理信息
+                  _this.api.basicDatas({}).then(res => {
+                    for (let i = 0; i < res.Data.Districts.length; i++) {
+                      if (res.Data.Districts[i].Name == cityName) {
+                        _this.localName = res.Data.Districts[i].Id;
+                        return;
+                      }
+                    }
+                  });
+                });
+              }
+            });
+          }
+        });
+      })
+      // 获取医科分类
+      let WorkParams = {
+        "KeyWord": "",
+        "Technical": "",
+        "MinPrice": 0,
+        "MaxPrice": 999999,
+        "DistrictId": "",
+        "PageIndex": 1,
+        "PageSize": 20,
+        "WorkRoomBusinessTypeId": this.searchChooseTypeName,
+      }
+      let selectName = "";
+      if (this.$route.params.SubjectID == -1) {
+        // 给查找内容赋值
+        this.searchSubjectName = "全部";
+        // 查找内容
+        this.api.getDoctorWorkRooms(WorkParams).then(res => {
+          for (let i = 0; i < res.Data.Data.length; i++) {
+            res.Data.Data[i].fraction = res.Data.Data[i].CustomerAvgScore / 2;
+            if (String(res.Data.Data[i].fraction).indexOf(".") > -1) {
+              res.Data.Data[i].solidGrade = parseInt(res.Data.Data[i].fraction);
+              res.Data.Data[i].harfGrade = true;
+              res.Data.Data[i].hollowGrade = 4 - res.Data.Data[i].solidGrade;
+            } else {
+              res.Data.Data[i].solidGrade = res.Data.Data[i].fraction;
+              res.Data.Data[i].fraction = res.Data.Data[i].fraction + ".0";
+              res.Data.Data[i].harfGrade = false;
+              res.Data.Data[i].hollowGrade = 5 - res.Data.Data[i].solidGrade;
+            }
+            if (res.Data.Data[i].AdeptField == null || res.Data.Data[i].AdeptField == "") {
+              res.Data.Data[i].Good = [];
+            } else {
+              res.Data.Data[i].Good = res.Data.Data[i].AdeptField.split(" ");
+            }
+            res.Data.Data[i].showTitleContent = res.Data.Data[i].Name ? res.Data.Data[i].Name.replace("医生工作室", "") : "";
+          }
+          this.studioList = res.Data.Data;
+          if (res.Data.HasNextPage) {
+            this.loading = false;
+          } else {
+            this.endPage = true;
+            this.loading = true;
+          }
+          this.inited = true;
+        });
+      } else {
+        let SubjectParam = {
+          "PageIndex": 1,
+          "PageSize": 50,
+        }
+        this.api.getSubjects(SubjectParam).then(res => {
+          for (let i = 0; i < res.Data.TotalCount; i++) {
+            if (res.Data.Data[i].Id == this.$route.params.SubjectID) {
+              this.currentIndex = i + 1;
+              let params = {
+                "KeyWord": "",
+                "Technical": "",
+                "MinPrice": 0,
+                "MaxPrice": 999999,
+                "DistrictId": "",
+                "PageIndex": this.PageIndex,
+                "PageSize": this.PageSize,
+                "Subject": res.Data.Data[i].SubjectName,
+                "WorkRoomBusinessTypeId": this.searchChooseTypeName,
+              }
+
+              // 给查找内容赋值
+              this.searchSubjectName = res.Data.Data[i].SubjectName;
+              // 查找内容
+              this.api.getDoctorWorkRooms(params).then(res => {
+                for (let i = 0; i < res.Data.Data.length; i++) {
+                  res.Data.Data[i].fraction = res.Data.Data[i].CustomerAvgScore / 2;
+                  if (String(res.Data.Data[i].fraction).indexOf(".") > -1) {
+                    res.Data.Data[i].solidGrade = parseInt(res.Data.Data[i].fraction);
+                    res.Data.Data[i].harfGrade = true;
+                    res.Data.Data[i].hollowGrade = 4 - res.Data.Data[i].solidGrade;
+                  } else {
+                    res.Data.Data[i].solidGrade = res.Data.Data[i].fraction;
+                    res.Data.Data[i].fraction = res.Data.Data[i].fraction + ".0";
+                    res.Data.Data[i].harfGrade = false;
+                    res.Data.Data[i].hollowGrade = 5 - res.Data.Data[i].solidGrade;
+                  }
+                  if (res.Data.Data[i].AdeptField == null || res.Data.Data[i].AdeptField == "") {
+                    res.Data.Data[i].Good = []
+                  } else {
+                    res.Data.Data[i].Good = res.Data.Data[i].AdeptField.split(" ");
+                  }
+                  res.Data.Data[i].showTitleContent = res.Data.Data[i].Name ? res.Data.Data[i].Name.replace("医生工作室", "") : "";
+                }
+                this.studioList = res.Data.Data;
+                if (res.Data.HasNextPage) {
+                  this.loading = false;
+                } else {
+                  this.endPage = true;
+                  this.loading = true;
+                }
+                this.inited = true;
+              });
+              break;
+            }
+          }
+        });
+      }
+      // 获取科室类别
+      let Params = {
+        "PageIndex": this.PageIndex,
+        "PageSize": 50,
+      }
+      this.api.getSubjects(Params).then(res => {
+        let allList = {
+          "SubjectName": "全部"
+        }
+        this.subjectList.push(allList)
+        for (let i = 0; i < res.Data.Data.length; i++) {
+          this.subjectList.push(res.Data.Data[i])
+        }
+      });
+      this.changeFixTop();
+    },
+    methods: {
+      changeFixTop() {
+        let tempDom = this.$refs.videoSearch;
+        let height = tempDom.offsetHeight + tempDom.style.marginTop.replace("px", "") / 1 + tempDom.style.marginBottom.replace("px", "") / 1;
+        this.scrollStyle = {
+          height: this.wrapperHeight - height + 'px',
+          top: height + 'px',
+        }
+      },
+      // 致谢，在线咨询
+      customerAdmire(id) {
+        this.$router.push({path: '/pay/CustomerAdmire/' + id + "/2106"});
+      },
+      createOnlineConsult(customerId, workRoomId, isOnline, amount) {
+        if (!isOnline) {
+          Toast('医生未开通在线咨询服务');
+        } else {
+          this.$router.push({path: '/CreateOnlineConsult/' + customerId + '/' + workRoomId + '/' + amount + '/' + 1});
+        }
+      },
+      // 筛选条件
+      chooseType(Value) {
+        if (Value == 1) {
+          this.serviceType1 = "button-choose"
+          this.serviceType2 = "button-none"
+          this.serviceType3 = "button-none"
+          this.serviceType4 = "button-none"
+          this.serviceType5 = "button-none"
+        } else if (Value == 2) {
+          this.serviceType1 = "button-none"
+          this.serviceType2 = "button-choose"
+          this.serviceType3 = "button-none"
+          this.serviceType4 = "button-none"
+          this.serviceType5 = "button-none"
+        } else if (Value == 3) {
+          this.serviceType1 = "button-none"
+          this.serviceType2 = "button-none"
+          this.serviceType3 = "button-choose"
+          this.serviceType4 = "button-none"
+          this.serviceType5 = "button-none"
+        } else if (Value == 4) {
+          this.serviceType1 = "button-none"
+          this.serviceType2 = "button-none"
+          this.serviceType3 = "button-none"
+          this.serviceType4 = "button-choose"
+          this.serviceType5 = "button-none"
+        } else if (Value == 5) {
+          this.serviceType1 = "button-none"
+          this.serviceType2 = "button-none"
+          this.serviceType3 = "button-none"
+          this.serviceType4 = "button-none"
+          this.serviceType5 = "button-choose"
+        }
+        this.searchChooseTypeName = Value;
+      },
+      choosePrice(Value) {
+        if (Value == 1) {
+          this.priceLong1 = "button-choose"
+          this.priceLong2 = "button-none"
+          this.priceLong3 = "button-none"
+          this.priceLong4 = "button-none"
+          this.searchChoosePriceName = "1"
+        } else if (Value == 2) {
+          this.priceLong1 = "button-none"
+          this.priceLong2 = "button-choose"
+          this.priceLong3 = "button-none"
+          this.priceLong4 = "button-none"
+          this.searchChoosePriceName = "11"
+        } else if (Value == 3) {
+          this.priceLong1 = "button-none"
+          this.priceLong2 = "button-none"
+          this.priceLong3 = "button-choose"
+          this.priceLong4 = "button-none"
+          this.searchChoosePriceName = "31"
+        } else if (Value == 4) {
+          this.priceLong1 = "button-none"
+          this.priceLong2 = "button-none"
+          this.priceLong3 = "button-none"
+          this.priceLong4 = "button-choose"
+          this.searchChoosePriceName = "50"
+        }
+      },
+      chooseTitle(Value) {
+        if (Value == 1) {
+          this.titleName1 = "button-choose"
+          this.titleName2 = "button-none"
+          this.titleName3 = "button-none"
+          this.titleName4 = "button-none"
+          this.searchChooseTitleName = "住院医师"
+        } else if (Value == 2) {
+          this.titleName1 = "button-none"
+          this.titleName2 = "button-choose"
+          this.titleName3 = "button-none"
+          this.titleName4 = "button-none"
+          this.searchChooseTitleName = "主治医师"
+        } else if (Value == 3) {
+          this.titleName1 = "button-none"
+          this.titleName2 = "button-none"
+          this.titleName3 = "button-choose"
+          this.titleName4 = "button-none"
+          this.searchChooseTitleName = "副主任医师"
+        } else if (Value == 4) {
+          this.titleName1 = "button-none"
+          this.titleName2 = "button-none"
+          this.titleName3 = "button-none"
+          this.titleName4 = "button-choose"
+          this.searchChooseTitleName = "主任医师"
+        }
+      },
+      // 医生科室发生变化
+      chooseStudio(newValue, index) {
+        this.currentIndex = index;
+        this.areaShow = false;
+        this.subjectShow = false;
+        this.chooseShow = false;
+        if (this.searchSubjectName != newValue) {
+          this.searchSubjectName = newValue;
+        }
+        this.searchName()
+      },
+      // 地区发生变化
+      chooseArea(newValaue) {
+        if (newValaue == 1) {
+          this.departArea = "";
+          this.allArea = "choose-d";
+          this.searchAreaName = 1;
+        } else {
+          if (!this.localName) {
+            Toast("定位失败，请检查是否打开定位功能");
+            return;
+          } else {
+            this.departArea = "choose-d";
+            this.allArea = "";
+            this.searchAreaName = this.localName;
+          }
+        }
+        this.areaShow = false;
+        this.subjectShow = false;
+        this.chooseShow = false;
+        this.searchName()
+      },
+      // 查找工作室
+      searchName() {
+        // 刷新PageIndex
+        this.PageIndex = 1;
+        this.endPage = false;
+        // 获取工作室列表
+        let titleName = "";
+        let minPrice = 0
+        let maxPrice = 999999;
+        let areaName = "";
+        // 价格price
+        if (this.searchChoosePriceName == 1) {
+          maxPrice = 10;
+        } else if (this.searchChoosePriceName == 11) {
+          minPrice = 11;
+          maxPrice = 10;
+        } else if (this.searchChoosePriceName == 31) {
+          minPrice = 31;
+          maxPrice = 50;
+        } else if (this.searchChoosePriceName == 50) {
+          minPrice = 50;
+        }
+        // 地区area
+        // areaName = this.searchAreaName
+        // if(this.searchAreaName==0)  {
+        //     areaName = ""
+        // }
+        let subjectName = "";
+        if (this.searchSubjectName == "全部") {
+          subjectName = "";
+        } else {
+          subjectName = this.searchSubjectName;
+        }
+
+        let Params = {
+          "KeyWord": this.searchContent,
+          "Subject": subjectName,
+          "Technical": this.searchChooseTitleName,
+          "MinPrice": minPrice,
+          "MaxPrice": maxPrice,
+          "DistrictId": areaName,
+          "PageIndex": this.PageIndex,
+          "PageSize": this.PageSize,
+          "WorkRoomBusinessTypeId": this.searchChooseTypeName,
+        };
+        this.api.getDoctorWorkRooms(Params).then(res => {
+          for (let i = 0; i < res.Data.Data.length; i++) {
+            res.Data.Data[i].fraction = res.Data.Data[i].CustomerAvgScore / 2;
+            if (String(res.Data.Data[i].fraction).indexOf(".") > -1) {
+              res.Data.Data[i].solidGrade = parseInt(res.Data.Data[i].fraction);
+              res.Data.Data[i].harfGrade = true;
+              res.Data.Data[i].hollowGrade = 4 - res.Data.Data[i].solidGrade;
+            } else {
+              res.Data.Data[i].solidGrade = res.Data.Data[i].fraction;
+              res.Data.Data[i].fraction = res.Data.Data[i].fraction + ".0";
+              res.Data.Data[i].harfGrade = false;
+              res.Data.Data[i].hollowGrade = 5 - res.Data.Data[i].solidGrade;
+            }
+
+            if (res.Data.Data[i].AdeptField == null || res.Data.Data[i].AdeptField == "") {
+              res.Data.Data[i].Good = [];
+            } else {
+              res.Data.Data[i].Good = res.Data.Data[i].AdeptField.split(" ");
+            }
+            res.Data.Data[i].showTitleContent = res.Data.Data[i].Name ? res.Data.Data[i].Name.replace("医生工作室", "") : "";
+          }
+          this.studioList = res.Data.Data;
+          this.loadPage = false;
+          if (res.Data.HasNextPage) {
+            this.loading = false;
+          } else {
+            this.endPage = true;
+            this.loading = true;
+          }
+        });
+      },
+      // 点击显示和替换图片
+      areaClick() {
+        this.areaShow = !this.areaShow;
+        if (this.areaShow) {
+          this.subjectShow = false;
+          this.chooseShow = false;
+        }
+        ;
+      },
+      subjectClick() {
+        this.subjectShow = !this.subjectShow;
+        if (this.subjectShow) {
+          this.areaShow = false;
+          this.chooseShow = false;
+        }
+      },
+      chooseClick() {
+        this.chooseShow = !this.chooseShow;
+        if (this.chooseShow) {
+          this.areaShow = false;
+          this.subjectShow = false;
+        }
+        ;
+      },
+      //工作室详情
+      StudioDetail(studioId, studioName) {
+        this.$router.push({path: '/StudioDetail/' + studioId + '/' + studioName});
+      },
+      handleTopChange(status) {
+        this.moveTranslate = 1;
+        this.topStatus = status;
+      },
+      // 筛选中重置按钮
+      resetChoose() {
+        this.searchChooseTypeName = ""
+        this.searchChoosePriceName = ""
+        this.searchChooseTitleName = ""
+        this.serviceType1 = "button-none"
+        this.serviceType2 = "button-none"
+        this.serviceType3 = "button-none"
+        this.serviceType4 = "button-none"
+        this.serviceType5 = "button-none"
+        this.priceLong1 = "button-none"
+        this.priceLong2 = "button-none"
+        this.priceLong3 = "button-none"
+        this.priceLong4 = "button-none"
+        this.titleName1 = "button-none"
+        this.titleName2 = "button-none"
+        this.titleName3 = "button-none"
+        this.titleName4 = "button-none"
+      },
+      // 筛选确定按钮
+      enterChoose() {
+        this.searchName()
+        this.chooseShow = false
+      },
+      // 加载更多
+      loadMore() {
+        this.loading = true;
+        this.loadPage = true;
+        setTimeout(() => {
+          this.PageIndex++;
+          let titleName = "";
+          let minPrice = 0
+          let maxPrice = 999999;
+          // 价格price
+          if (this.searchChoosePriceName == 1) {
+            maxPrice = 10;
+          } else if (this.searchChoosePriceName == 11) {
+            minPrice = 11;
+            maxPrice = 10;
+          } else if (this.searchChoosePriceName == 31) {
+            minPrice = 31;
+            maxPrice = 50;
+          } else if (this.searchChoosePriceName == 50) {
+            minPrice = 50;
+          }
+
+          // 类别
+          let subjectName = "";
+          if (this.searchSubjectName == "全部") {
+            subjectName = "";
+          } else {
+            subjectName = this.searchSubjectName;
+          }
+
+          let Params = {
+            "KeyWord": this.searchContent,
+            "Subject": subjectName,
+            "Technical": this.searchChooseTitleName,
+            "MinPrice": minPrice,
+            "MaxPrice": maxPrice,
+            "DistrictId": this.searchAreaName,
+            "PageIndex": this.PageIndex,
+            "PageSize": this.PageSize,
+            "WorkRoomBusinessTypeId": this.searchChooseTypeName,
+          };
+          this.api.getDoctorWorkRooms(Params).then(res => {
+            for (let i = 0; i < res.Data.Data.length; i++) {
+              res.Data.Data[i].fraction = res.Data.Data[i].CustomerAvgScore / 2;
+              if (String(res.Data.Data[i].fraction).indexOf(".") > -1) {
+                res.Data.Data[i].solidGrade = parseInt(res.Data.Data[i].fraction);
+                res.Data.Data[i].harfGrade = true;
+                res.Data.Data[i].hollowGrade = 4 - res.Data.Data[i].solidGrade;
+              } else {
+                res.Data.Data[i].solidGrade = res.Data.Data[i].fraction;
+                res.Data.Data[i].fraction = res.Data.Data[i].fraction + ".0";
+                res.Data.Data[i].harfGrade = false;
+                res.Data.Data[i].hollowGrade = 5 - res.Data.Data[i].solidGrade;
+              }
+              if (res.Data.Data[i].AdeptField == null || res.Data.Data[i].AdeptField == "") {
+                res.Data.Data[i].Good = []
+              } else {
+                res.Data.Data[i].Good = res.Data.Data[i].AdeptField.split(" ");
+              }
+              res.Data.Data[i].showTitleContent = res.Data.Data[i].Name ? res.Data.Data[i].Name.replace("医生工作室", "") : "";
+              this.studioList.push(res.Data.Data[i]);
+            }
+            this.loadPage = false;
+            if (res.Data.HasNextPage) {
+              this.loading = false;
+            } else {
+              this.endPage = true;
+              this.loading = true;
+            }
+          });
+        }, 800);
+      },
+    },
+  };
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+  .page-infinite-wrapper {
+    font-size: 1.6rem;
+  }
+
+  @import '../../common/style.css';
+  .button-none {
+    border: solid 1px #eee;
+    background-color: #eee;
+    padding: 2px 5px;
+    float: left;
+    border-radius: 5px;
+    margin: 5px 1px;
+    height: 21px;
+    line-height: 21px;
+    font-size: 1.2rem;
+    width: 20%;
+    text-align: center;
+  }
+
+  .button-choose {
+    border: solid 1px #03a9f4;
+    background-color: #eee;
+    padding: 2px 5px;
+    float: left;
+    border-radius: 5px;
+    margin: 5px 1px;
+    height: 21px;
+    line-height: 21px;
+    font-size: 1.2rem;
+    width: 20%;
+    text-align: center;
+  }
+
+  .button-left {
+    border: solid 1px #eee;
+    border-radius: 5px;
+    background-color: #eee;
+    width: 25%;
+    height: 30px;
+  }
+
+  .button-right {
+    border: solid 1px #eee;
+    border-radius: 5px;
+    background-color: #03a9f4;
+    width: 25%;
+    color: #FFF;
+    height: 30px;
+  }
+
+  .choose-d {
+    color: #03a9f4;
+  }
+
+  .doctor-room-bottom {
+    width: 100%;
+    height: 40px;
+    background-color: white;
+    margin-bottom: 5px;
+  }
+
+  .page-infinite-wrapper {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .videoSearch {
+    position: fixed;
+    top: 0px;
+    z-index: 2;
+  }
+
+  .scroll-div {
+    position: fixed;
+    width: 100%;
+    overflow: scroll;
+    .gzs-ys-l {
+      height: 80%;
+      margin-left: 5px;
+      .gzs-ys-l-img {
+        height: 100%;
+        background-position: center center;
+        background-size: cover;
+        background-repeat: no-repeat;
+      }
+    }
+  }
+
+  .searchBG1 {
+    padding: 8px 10px;
+    background-color: #FFF;
+  }
+
+  .searchBG2 {
+    background-color: #f3f3f3;
+  }
+
+  .doctor-name {
+    width: 100%;
+    float: left;
+    color: black;
+    font-size: 1.8rem;
+  }
+
+  .doctor-suffix {
+    font-size: 1.2rem;
+    color: #757575;
+    margin: 4px 0 0 5px;
+  }
+</style>

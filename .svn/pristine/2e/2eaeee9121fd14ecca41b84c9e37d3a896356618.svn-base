@@ -1,0 +1,541 @@
+<template>
+<div class="MyHealthFile">
+    <mt-navbar class="page-part" v-model="selected" style="margin-bottom: 0;position:fixed;width: 100%;height: 50px;z-index:3000">
+      <mt-tab-item style="padding: 12px 0" id="1">个人资料</mt-tab-item>
+      <mt-tab-item style="padding: 12px 0" id="2">既往病史</mt-tab-item>
+      <mt-tab-item style="padding: 12px 0" id="3">咨询记录</mt-tab-item>
+    </mt-navbar>
+    <mt-tab-container v-model="selected" style="width: 100%;position:absolute;margin-top: 50px;">
+      <mt-tab-container-item id="1">
+          <a class="mint-cell">
+              <div class="mint-cell-wrapper" style="background-image:initial">
+                  <div class="mint-cell-title" style="text-align: left;width: 20%;">
+                      <img src="../../images/jkda-user.png" width="24" height="24">
+                      <span class="mint-cell-text">姓名</span>
+                  </div>
+                  <div class="mint-cell-value" style="width: 80%;">
+                    <input class="mint-field-core" type="text" v-model="Name" style="text-align: right;width: 100%;background-color: #FFF" placeholder="您的名字"/>
+                  </div>
+              </div>
+          </a>
+          <a class="mint-cell">
+              <div class="mint-cell-wrapper">
+                  <div class="mint-cell-title" style="text-align: left;width: 20%;">
+                      <img src="../../images/jkda-xb.png" width="24" height="24">
+                      <span class="mint-cell-text">性别</span>
+                  </div>
+                  <div class="mint-cell-value" style="float: right">
+                      <label>男<input type="radio" v-model="Gender" value="0"/></label>
+                      <label>女<input type="radio" v-model="Gender" value="1"/></label>
+                  </div>
+              </div>
+          </a>
+          <a class="mint-cell">
+              <div class="mint-cell-wrapper">
+                  <div class="mint-cell-title" style="text-align: left;width: 20%;">
+                      <img src="../../images/jkda-nl.png" width="24" height="24">
+                      <span class="mint-cell-text">年龄</span>
+                  </div>
+                  <div class="mint-cell-value" style="width: 80%;">
+                    <input class="mint-field-core" type="number" v-model="Age"
+                           style="text-align:right;width: 100%;background-color: #FFF" placeholder="您的年龄"/>
+                  </div>
+              </div>
+          </a>
+          <a class="mint-cell">
+            <div class="mint-cell-wrapper">
+              <div class="mint-cell-title" style="text-align: left;width: 20%;">
+                <img src="../../images/jkda-sg.png" width="24" height="24">
+                <span class="mint-cell-text">身高</span>
+              </div>
+              <div class="mint-cell-value" style="width: 80%;">
+                <input class="mint-field-core" type="number" v-model="Height"
+                       style="text-align: right;width: 100%;background-color: #FFF" placeholder="您的身高(厘米)"/>
+              </div>
+            </div>
+          </a>
+          <a class="mint-cell">
+            <div class="mint-cell-wrapper">
+              <div class="mint-cell-title" style="text-align: left;width: 20%;">
+                <img src="../../images/jkda-tz.png" width="24" height="24">
+                <span class="mint-cell-text">体重</span>
+              </div>
+              <div class="mint-cell-value" style="width: 80%;">
+                <input class="mint-field-core" type="number" v-model="Weight"
+                       style="text-align: right;width: 100%;background-color: #FFF" placeholder="您的体重(公斤)"/>
+              </div>
+            </div>
+          </a>
+          <a class="mint-cell">
+            <div class="mint-cell-wrapper">
+              <div class="mint-cell-title" style="text-align: left;width: 20%;">
+                <img src="../../images/jkda-xx.png" width="24" height="24">
+                <span class="mint-cell-text">血型</span>
+              </div>
+              <div class="mint-cell-value" style="width: 80%;">
+                <mt-button style="background-color:#FFF;text-align: right;box-shadow:none;padding-left:0;font:unset;padding-top:3%" @click.native="sheetVisible = true" size="large">
+                  {{xueXing}}&nbsp;&nbsp;
+                  <img style="float: right;width: 8px" src="../../images/user-listjt.png">
+                </mt-button>
+              </div>
+            </div>
+          </a>
+          <div class="users-list1" style="padding:8px 0">
+              <mt-button style="width: 90%;margin-left: 5%" size="large" @click="submitData" type="primary">
+                <div v-if="healthID > 0">修改</div>
+                <div v-else>创建</div>
+              </mt-button>
+          </div>
+          <mt-actionsheet :actions="actions" v-model="sheetVisible"></mt-actionsheet>
+      </mt-tab-container-item>
+      <mt-tab-container-item id="2">
+          <div style="border-bottom: 1px solid #d9d9d9" :key="Index" v-for="(Item,Index) in medicalRecordList">
+              <div v-if="Item.Pictures.length > 0" style="background-color: #FFF;height:190px;overflow:hidden">
+                  <div style="height: 50px">
+                      <mt-cell style="width: 80%;float: left;text-align: left;background-image: linear-gradient(180deg, #FFF, #FFF 100%, transparent 100%)" :title="Item.Title" icon="more" @click="medicalRecordDetail(Item.Id)">
+                          <img slot="icon" src="../../images/bllist-r.png" width="20" height="24">
+                      </mt-cell>
+                      <mt-button size="large" style="width: 20%;float: left;height: 48px;background-color: #FFF;box-shadow:none" @click.native="openConfirm(Item.Id)">
+                          <img src="../../images/bllist-del.png" style="width: 20px;">
+                      </mt-button>
+                  </div>
+                  <div class="mint" style="margin: 5px 2%;text-align: left;height: 52px;" @click="medicalRecordDetail(Item.Id)">
+                      <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{Item.Description}}</div>
+                  </div>
+                  <div style="width: 20%;float: left;margin: 10px 5px;" :key="imgIndex" v-for="(imgItem,imgIndex) in Item.Pictures">
+                      <img slot="icon" :src="imgItem.Url" style="max-width: 100%;height:52px" >
+                  </div>
+              </div>
+              <div v-else style="background-color: #FFF;height:120px;overflow:hidden">
+                  <div style="height: 50px">
+                      <mt-cell style="width: 80%;float: left;text-align: left" :title="Item.Title" icon="more" @click="medicalRecordDetail(Item.Id)">
+                          <img slot="icon" src="../../images/bllist-r.png" width="20" height="24">
+                      </mt-cell>
+                      <mt-button size="large" style="width: 20%;float: left;height: 48px;background-color: #FFF;;box-shadow:none" @click.native="openConfirm(Item.Id)">
+                          <img src="../../images/bllist-del.png" style="width: 20px;">
+                      </mt-button>
+                  </div>
+                  <div class="mint" style="margin: 5px 2%;text-align: left" @click="medicalRecordDetail(Item.Id)">
+                      <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{Item.Description}}</div>
+                  </div>
+              </div>
+          </div>
+
+        <img style="position:fixed;bottom:2%;right:2%;width: 48px;" src="../../images/add.png"
+             @click="CreateMedicalRecords()">
+      </mt-tab-container-item>
+      <mt-tab-container-item id="3">
+          <div v-if="consultsList.length > 0">
+              <a :key="Index" v-for="(Item,Index) in consultsList">
+                  <div class="gzs-rdzx" style="height:130px">
+                      <div @click="advisoryDetail(Item.Id, Item.WorkRoomId, Item.OnlineConsultStatus, Item.IsPaid, Item.DoctorNetEasyId, Item.ConsultTypeId)" class="gzs-rdzxc" style="text-align:left;width: 90%">
+                          <div class="gzs-rdzxc-title">
+                              {{Item.Title}}
+                              <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right" v-if="Item.OnlineConsultStatus == 2">已结束</div>
+                              <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right" v-if="Item.OnlineConsultStatus == 1">咨询中</div>
+                              <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right" v-if="Item.OnlineConsultStatus == 0">
+                                  <div v-if="!Item.IsPaid">待付款</div>
+                                  <div v-if="Item.IsPaid">待回答</div>
+                              </div>
+                          </div>
+                          <div class="gzs-rdzxc-user">
+                              <img src="../../images/gzs-user.png">咨询医生：{{Item.WorkRoomCustomerRealName}}
+                          </div>
+                          <div class="gzs-rdzxc-user">
+                              <img src="../../images/gzs-time.png">咨询时间：{{Item.CreatedOnUtc}}
+                          </div>
+                          <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time" v-if="Item.OnlineConsultStatus == 2">
+                            <button @click.stop="consultEvaluate(Item.Id, Item.WorkRoomId, Item.ConsultTypeId, Index)"
+                                    style="height: 20px;width: 80px;z-index: 999"
+                                    class="mint-button mint-button--default mint-button--small"
+                                    v-if="!Item.IsEvaluated && Item.IsPaid">
+                                  评价
+                              </button>
+                              <button @click.stop="studioDetail(Item.WorkRoomId)" style="height: 20px;width: 80px;z-index: 999" class="mint-button mint-button--default mint-button--small">
+                                  再次咨询
+                              </button>
+                          </div>
+                          <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time" v-if="Item.OnlineConsultStatus == 0">
+                              <div v-if="!Item.IsPaid">
+                                  <button @click.stop="deleteconsults(Item.Id)" style="height: 20px;width: 80px;z-index: 999" class="mint-button mint-button--default mint-button--small">
+                                      删除
+                                  </button>
+                                  <button @click.stop="payment(Item.Expense, Item.ConsultTypeId, Item.Id, Item.CustomerId)" style="height: 20px;width: 80px;z-index: 999" class="mint-button mint-button--default mint-button--small">
+                                      支付
+                                  </button>
+                              </div>
+                              <div v-if="Item.IsPaid">
+                                  <button @click.stop="changeSatus(Item.Id)" style="height: 20px;width: 80px;z-index: 999" class="mint-button mint-button--default mint-button--small">
+                                      结束咨询
+                                  </button>
+                              </div>
+                          </div>
+                          <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time" v-if="Item.OnlineConsultStatus == 1">
+                              <button @click.stop="changeSatus(Item.Id)" style="height: 20px;width: 80px;z-index: 999" class="mint-button mint-button--default mint-button--small">
+                                  结束咨询
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              </a>
+          </div>
+      </mt-tab-container-item>
+    </mt-tab-container>
+    <mt-popup
+      v-model="popupVisible"
+      v-if="showConsultEvaluate"
+    >
+      <ConsultEvaluate
+        :consultId="currentId"
+        :workRoomId="currentWorkRoomId"
+        :consultTypeId="2105"
+        @change-modal="changeModal"
+        @submit-success="submitSuccess"
+      >
+      </ConsultEvaluate>
+    </mt-popup>
+</div>
+</template>
+
+<script>
+import { MessageBox } from 'mint-ui';
+import { Toast } from 'mint-ui';
+import ConsultEvaluate from './ConsultEvaluate';
+import { Indicator } from 'mint-ui';
+
+var timeInterval;
+export default {
+    components: {
+      ConsultEvaluate
+    },
+    data() {
+        return {
+            healthID: 0,
+            selected: '1',
+            sheetVisible: false,
+            actions: [],
+            medicalRecordList: [],
+            consultsList: [],
+            xueXing: "您的血型",
+            Name: "",
+            Gender: 0,
+            Age: "",
+            Height: "",
+            Weight: "",
+            showConsultEvaluate: false,
+            popupVisible: false,
+            currentId: '',
+            currentWorkRoomId:'',
+            consultTypeId: '',
+          currentConsultIndex: null,
+        };
+    },
+    mounted() {
+        // 设置默认选中
+        if(this.$route.params.SelectID == 2) {
+            this.selected = '2';
+        } else if(this.$route.params.SelectID == 3) {
+            this.selected = '2';
+        }
+        // 设置血型
+        this.actions = [
+        {
+            name: 'A',
+            method: this.XXChengeA
+        },
+        {
+            name: 'B',
+            method: this.XXChengeB
+        },
+        {
+            name: 'O',
+            method: this.XXChengeO
+        },
+        {
+            name: 'AB',
+            method: this.XXChengeAB
+        },
+        {
+            name: 'Rh',
+            method: this.XXChengeRh
+        },
+        ];
+        // 健康档案详情
+        this.healthID = this.$route.params.FileID;
+        this.api.getCustomerHealthyRecord({"Id": this.$route.params.FileID}).then( res => {
+            this.Name = res.Data.Name;
+            this.Gender = res.Data.Sex;
+            this.Age = res.Data.Age;
+            this.Height = res.Data.Height;
+            this.Weight = res.Data.Weight;
+            this.xueXing = res.Data.BloodType;
+        });
+        // 病历列表
+        let params = {
+            "Id": this.$route.params.FileID,
+            "PageIndex": 1,
+            "PageSize": 10,
+        };
+        this.api.getCustomerMedicalRecords(params).then( res => {
+            for (let i=0;i<res.Data.Data.length;i++) {
+                if(res.Data.Data[i].Title.length > 10) {
+                    res.Data.Data[i].Title = res.Data.Data[i].Title.substr(0, 12) + "...";
+                }
+            }
+            this.medicalRecordList = res.Data.Data;
+        });
+        // 咨询记录
+        if (this.$route.params.FileID > 0) {
+            let onlineParams = {
+                "ConsultTypeId": 0,
+                "StatusId": -1,
+                "Title": "",
+                "WorkRoomId": -1,
+                "CustomerHealthyRecordId": this.$route.params.FileID,
+                "CustomerId": -1,
+                "PageIndex": 1,
+                "PageSize": 20,
+            };
+            this.api.getHotOnline(onlineParams).then( res => {
+                this.consultsList = res.Data.Data;
+            });
+        }
+    },
+    methods: {
+        changeModal: function(childValue) {
+            this.popupVisible = childValue;
+        },
+        // 删除在线咨询
+        deleteconsults(consultsID) {
+            MessageBox.confirm('确定删除该咨询吗?', '提示').then(action => {
+                this.api.deleteCustomerOnlineConsult({"Id":consultsID}).then( res => {
+                    if(res.Data) {
+                        Toast("删除成功！");
+                        for (var i = 0, L = this.consultsList.length; i < L; i++) {
+                          if (this.consultsList[i].Id == consultsID) {
+                            this.consultsList.splice(i, 1);
+                          }
+                        }
+                    } else {
+                        Toast("删除失败，请稍后再试！");
+                    }
+                });
+            });
+        },
+        // 删除病历
+        openConfirm(DetailID) {
+            MessageBox.confirm('确定删除该病历吗?', '提示').then(action => {
+                this.api.deleteCustomerMedicalRecord({"Id":DetailID}).then( res => {
+                    if(res.Data) {
+                        Toast("删除成功！");
+                        for (var i = 0; i < this.medicalRecordList.length; i++) {
+                            if (this.medicalRecordList[i].Id == DetailID) {
+                                this.medicalRecordList.splice(i, 1);
+                            }
+                        }
+                    } else {
+                        Toast("删除失败，请稍后再试！");
+                    }
+                });
+            });
+        },
+        // 详咨询情
+        advisoryDetail(advisoryID, workRoomId, onlineConsultStatus, isPaid, doctorId, consultTypeId) {
+            if (consultTypeId == 3) {
+                window.location.href ='http://weixin.yipong.com/DownLoad/index.html';
+                return;
+            }
+            if (onlineConsultStatus != 1 && !isPaid) {
+                if (onlineConsultStatus == 2) {
+                    Toast("您的咨询由于长时间未支付，系统已自动关闭，请重新创建！");
+                } else {
+                    Toast("您的咨询还未付款！");
+                }
+            } else {
+                //进入详情
+                //建立连接
+                this.connectNim();
+                Indicator.open();
+                timeInterval = setInterval(() => {
+                    if (this.$store.state.hasConnected) {
+                        Indicator.close();
+                        clearInterval(timeInterval);
+                        if (onlineConsultStatus == 2) {
+                            this.$router.push({path: '/chat/chatInfo/' + advisoryID + '/' + workRoomId});
+                        } else if (onlineConsultStatus == 1 || onlineConsultStatus == 0) {
+                            this.$router.push({path: '/chat/continueChat/' + advisoryID + '/p2p-' + doctorId});
+                        }
+                    }
+                }, 1000)
+
+            }
+        },
+        connectNim() {
+            let userInfo = JSON.parse(window.localStorage.getItem("userInfo"));
+            var params = {
+                  uid: userInfo.YunXinUserName,
+                  sdktoken: userInfo.YunXinToken,
+                  nick: userInfo.Nickname,
+                  avatar: userInfo.UserHeaderImageUrl
+            }
+            this.$store.dispatch('connect',  params);
+            this.$store.dispatch('updateRefreshState');
+        },
+        // 支付咨询
+        payment(amount, consultTypeId, referToId, customerId) {
+            if (consultTypeId == '1') {
+                consultTypeId = '2308';
+            } else if (consultTypeId == '2') {
+                consultTypeId = '2311'
+            } else if (consultTypeId == '3') {
+                consultTypeId = ' 2312'
+            }
+            var pageParams = {
+                amount: amount,
+                fileID: this.$route.params.FileID,
+                funcName: 'advisoryList',
+                changeTypeId: consultTypeId,
+                paymentTypeId: '902',
+                reforToTypeId: '0',
+                referToId: referToId,
+                customerId: customerId
+            }
+            this.$router.push({name: '直接支付', query: pageParams});
+
+        },
+        // 结束咨询
+        changeSatus(zzID) {
+            // 更改咨询状态
+            let params = {
+                "StateId": 2,
+                "Id": zzID,
+            }
+            this.api.updateCustomerOnlineConsultState(params).then( res => {
+                if(res.Data) {
+                    Toast("已结束！");
+                    this.$router.push({path: '/MyHealthFile/' + this.$route.params.FileID + "/3"});
+                } else {
+                    Toast("操作失败，请稍后再试！");
+                }
+            });
+        },
+        //咨询评价
+      consultEvaluate(id, workRoomId, consultTypeId, index) {
+            this.currentId = id;
+            this.currentWorkRoomId = workRoomId;
+            this.showConsultEvaluate = true;
+            this.popupVisible = true;
+            this.consultTypeId = consultTypeId;
+        this.currentConsultIndex = index;
+
+      },
+      //完成评价
+      submitSuccess() {
+        var item = this.consultsList[this.currentConsultIndex];
+        item.IsEvaluated = true;
+        this.consultsList.splice(this.currentConsultIndex, 1, item);
+        },
+        // 医生工作室详情
+        studioDetail(StudioID) {
+            this.api.getStudioDetail({id: StudioID}).then(res => {
+              this.$router.push({ path: '/StudioDetail/' + StudioID + '/' + res.Data.Name});
+            })
+        },
+        // 病历详情
+        medicalRecordDetail(DetailID) {
+            this.$router.push({ path: '/medicalRecordDetail/' + DetailID })
+        },
+        // 创建病历
+        CreateMedicalRecords() {
+            if(this.$route.params.FileID == 0) {
+                Toast("请先创建或选择个人资料！");
+                return;
+            };
+            this.$router.push({ path: '/CreateMedicalRecords/' + this.$route.params.FileID })
+        },
+        // 血型列表
+        XXChengeA() {
+            this.sheetVisible = false;
+            this.xueXing = "A";
+        },
+        XXChengeB() {
+            this.sheetVisible = false;
+            this.xueXing = "B";
+        },
+        XXChengeO() {
+            this.sheetVisible = false;
+            this.xueXing = "O";
+        },
+        XXChengeAB() {
+            this.sheetVisible = false;
+            this.xueXing = "AB";
+        },
+        XXChengeRh() {
+            this.sheetVisible = false;
+            this.xueXing = "Rh";
+        },
+        // 创建/修改健康档案
+        submitData() {
+            if(this.Name == "") {
+                Toast("姓名不能为空！");
+                return;
+            }
+            if(this.Age == "" || this.Age == 0) {
+                Toast("年龄不能为空或0！");
+                return;
+            }
+            if(this.Height == "" || this.Height == 0) {
+                Toast("身高不能为空或0！");
+                return;
+            }
+            if(this.Weight == "" || this.Weight == 0) {
+                Toast("体重不能为空或0！");
+                return;
+            }
+            if(this.xueXing == "您的血型") {
+                Toast("请选择血型！");
+                return;
+            }
+            let userinfo = window.localStorage.getItem("userInfo");
+            userinfo = JSON.parse(userinfo);
+            let params = {
+                "Name": this.Name,
+                "Sex": this.Gender,
+                "Age": this.Age,
+                "Height": this.Height,
+                "Weight": this.Weight,
+                "BloodType": this.xueXing,
+                "CreatedCustomerId": userinfo.UserId,
+            };
+            if(this.$route.params.FileID > 0) {
+                params.Id = this.$route.params.FileID;
+                this.api.updateCustomerHealthyRecord(params).then( res => {
+                    if(res.Data) {
+                        Toast("修改成功!");
+                        location.reload();
+                    } else {
+                        Toast("修改失败，请稍后再试！");
+                    }
+                });
+            } else {
+                this.api.createCustomerHealthyRecord(params).then( res => {
+                    if(res.ResultMessage == "Success") {
+                        Toast("创建成功！");
+                      this.$router.push({name: '健康档案'});
+                    }
+                });
+            }
+        },
+    },
+}
+</script>
+
+<style scoped>
+@import '../../common/style.css';
+.MyHealthFile .mint-popup{
+    height: 100%;
+    position: fixed;
+    top: 60%;
+    width: 100%;
+}
+</style>

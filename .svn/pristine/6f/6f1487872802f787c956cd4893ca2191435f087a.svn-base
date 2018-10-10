@@ -1,0 +1,866 @@
+<template>
+  <div class="studio-detail">
+    <div class="page-wrap tabb">
+      <div class="gzs-ys brw" v-if="studioInformation.WookRoomTypeId == 1 || studioInformation.WookRoomTypeId == 2">
+        <div class="gzs-ys-l" v-if="videoIntro == 1" @click="viewVideo(studioInformation.Id)">
+          <img src="../../images/video_btn.png" style="position:absolute;width:40px;height:auto;margin:20px 0 0 20px">
+          <img :src="studioInformation.StudioWorkRoomImg" style="width:80px;height:auto">
+        </div>
+        <div class="gzs-ys-l" v-else @click="bigImg">
+          <img :src="studioInformation.StudioWorkRoomImg" style="width:80px;height:auto">
+        </div>
+        <div class="gzs-ys-r" style="text-align:left;width:67%" @click="docDetail(studioInformation.Id)">
+          <div class="gzs-ys-r1 text-over-ellipsis">
+            {{studioInformation.Name}}
+          </div>
+          <div class="gzs-ys-r2 text-over-ellipsis" style="line-height: 20px;">
+            {{studioInformation.Hospital}}
+          </div>
+          <div class="gzs-ys-r2" style="line-height: 20px;">
+            {{studioInformation.Department}}·{{studioInformation.Technical}}
+          </div>
+          <div class="gzs-ys-r2"></div>
+          <div class="gzs-ys-r3" style="line-height: 20px;">从业 {{studioInformation.Seniority}}年</div>
+          <div class="gzs-ys-r4">
+            <img src="../../images/star1.png" v-for="n in studioInformation.solidGrade">
+            <img src="../../images/harfStar.png" v-if="studioInformation.harfGrade">
+            <img src="../../images/star0.png" v-for="n in studioInformation.hollowGrade">
+            {{studioInformation.fraction}}
+            <button @click="subscribeRoom" class="button-primary-gz" style="width: 60px;float:right;" v-if="!subscribe">
+              关注
+            </button>
+          </div>
+        </div>
+        <div class="gzs-ys-rr" style="width:80px;">
+          <img src="../../images/gzs-jt1.png" @click="docDetail(studioInformation.Id)">
+        </div>
+      </div>
+      <div class="gzs-ys brw" style="height:auto;overflow: hidden;"
+           v-if="studioInformation.WookRoomTypeId == 4 || studioInformation.WookRoomTypeId == 3">
+        <div style="height:70px;float:left;margin: 10px 6px;">
+          <div class="gzs-ys-l head-image" v-if="videoIntro == 1"
+               @click="viewVideo(studioInformation.Id)"
+               :style="{backgroundImage:'url(' + studioInformation.StudioWorkRoomImg + ')'}"
+          >
+            <img src="../../images/video_btn.png"
+                 style="position:absolute;width:40px;height:auto;left: 27px;top: 30px;">
+          </div>
+          <div class="gzs-ys-l head-image" v-else @click="bigImg"
+               :style="{backgroundImage:'url(' + studioInformation.StudioWorkRoomImg + ')'}"
+          >
+          </div>
+        </div>
+
+        <div class="gzs-ys-r" style="text-align:left;width:70%;min-height: 80px;">
+          <div style="width:calc(100% - 30px);word-break: break-all;line-height: 23px;">
+            <h6>{{studioInformation.Name}}</h6>
+            <div class="attention-button">
+              <button @click="subscribeRoom" class="button-primary-gz" v-if="!subscribe">关注</button>
+            </div>
+          </div>
+          <div class="gzs-ys-r2">
+            <pre>{{studioInformation.Description}}</pre>
+          </div>
+        </div>
+      </div>
+      <div class="gzs-tab brw mb5" style="text-align: left">
+        <div class="gzs-tabxq" :key="adeptIndex" v-for="(adeptItem,adeptIndex) in studioInformation.AdeptField">
+          {{adeptItem}}
+        </div>
+      </div>
+      <div class="gzs-gnxz brw mb5"
+           v-if="(studioInformation.WookRoomTypeId == 1 || studioInformation.WookRoomTypeId == 2) && showPersonalFunction">
+        <div :style="[baseStyle, touch.slideEffect]">
+          <div class="gzs-gnw"
+               @touchstart='touchStart("createOnlineConsult", "在线咨询", studioInformation.OnlineConsultExpense, 0)'
+               @touchmove='touchMove()'
+               @touchend='touchEnd()'
+               v-if="studioInformation.IsOnlineConsult"
+          >
+            <div class="gzs-gn" :class="{active: currentCount == 0}">
+              <div class="gzs-gn-img"><img src="../../images/gzs-zxzx.png"></div>
+              <div class="stitle">在线咨询</div>
+            </div>
+          </div>
+          <div class="gzs-gnw"
+               v-if="studioInformation.IsRecoveryGuide"
+               @touchstart='touchStart("createOnlineConsult", "康复指导", studioInformation.RecoveryGuideExpense, 1)'
+               @touchmove='touchMove()'
+               @touchend='touchEnd()'
+          >
+            <div class="gzs-gn" :class="{active: currentCount == 1}">
+              <div class="gzs-gn-img"><img src="../../images/gzs-kfzd.png"></div>
+              <div class="stitle">康复指导</div>
+            </div>
+          </div>
+          <div class="gzs-gnw"
+               v-if="studioInformation.IsVideoConsult"
+               @touchstart='touchStart("downLoadApp", "视频咨询", studioInformation.VideoConsultExpense, 2)'
+               @touchmove='touchMove()'
+               @touchend='touchEnd()'
+          >
+            <div class="gzs-gn" :class="{active: currentCount == 2}">
+              <div class="gzs-gn-img"><img src="../../images/gzs-spzx.png"></div>
+              <div class="stitle">视频咨询</div>
+            </div>
+          </div>
+          <div class="gzs-gnw"
+               v-if="studioInformation.IsFaceDiagnose"
+               @touchstart='touchStart("payCall", "预约诊疗", studioInformation.FaceDiagnoseExpense, 3)'
+               @touchmove='touchMove()'
+               @touchend='touchEnd()'
+          >
+            <div class="gzs-gn" :class="{active: currentCount == 3}">
+              <div class="gzs-gn-img"><img src="../../images/gzs-yyzl.png"></div>
+              <div class="stitle">预约诊疗</div>
+            </div>
+          </div>
+          <div class="gzs-gnw"
+               v-if="studioInformation.IsOutDiagnosis"
+               @touchstart='touchStart("payCall", "预约出诊", studioInformation.OutDiagnosisExpense, 4)'
+               @touchmove='touchMove()'
+               @touchend='touchEnd()'
+          >
+            <div class="gzs-gn" :class="{active: currentCount == 4}">
+              <div class="gzs-gn-img">
+                <img src="../../images/gzs-ycz.png">
+              </div>
+              <div class="stitle">预约出诊</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="titlebg" v-if="hotContent.data > 0">
+        <div class="titlebg-1" style="text-align: left"><img class="titlebg-img" src="../../images/rdzx.png">
+          <span class="titlebg-f">热度咨询</span>
+        </div>
+        <div class="titlebg-2"><span class="titlebg-f b2 " @click="moreHot(studioID)">更多</span></div>
+      </div>
+      <!--热度咨询内容 -->
+      <div class="gzs-rdzx" v-if="hotContent.data > 0">
+        <div class="gzs-rdzxc" style="text-align:left;margin: 0;"
+             @click="zxDetail(hotContent.Id, studioInformation.Id)">
+          <div class="gzs-rdzxc-title"><img src="../../images/gzs-zxbt.png">咨询标题：{{hotContent.Title}}</div>
+          <div class="gzs-rdzxc-user"><img src="../../images/gzs-user.png">咨询用户：{{hotContent.PatientRealName}}</div>
+          <div class="gzs-rdzxc-time"><img src="../../images/gzs-time.png">咨询时间：{{hotContent.CreatedOnUtc}}</div>
+        </div>
+      </div>
+      <div class="titlebg mt5">
+        <div class="titlebg-1" style="text-align: left">
+          <img class="titlebg-img" src="../../images/zhibo.png">
+          <span class="titlebg-f">直播</span>
+        </div>
+        <div class="titlebg-2">
+          <span @click="LiveList(studioInformation.CreateCustomerId)" class="titlebg-f b2 ">更多</span>
+        </div>
+      </div>
+      <div class="gzs-content-banner brw" v-if="newLive.Id > 0">
+        <div @click="liveDetail(newLive.Id, newLive.Title)" style="overflow: hidden;height:100px">
+          <img :src="newLive.ImgUrl">
+          <div class="zbicon">直播</div>
+          <div class="gzs-zbgz">{{newLive.FollowCount}}人关注</div>
+          <div class="gzs-zb-titlebg">
+            <div class="gzs-zb-title">{{newLive.Title}}</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div @click="yuLiveDetail(item.Id, item.Title)" class="zbyg-list" :key="index" v-for="(item,index) in yuList">
+          <div class="zbyg-list-l" style="padding:10px 0 0 5px">
+            <img :src="item.ImgUrl" style="height:70px;width:100px">
+          </div>
+          <div class="zbyg-list-c" style="text-align:left;width:calc(100% - 190px);">
+          <span class="zbygbt text-over-ellipsis"
+                style="width: 100%;">{{item.Title}}</span><br>
+            <span class="zbygsbt"><img src="../../images/zbyg-time.png">{{item.StartTime}}</span><br>
+            <span class="zbygsbt text-over-ellipsis" style="width:100%;"><img
+              src="../../images/zbyg-user.png">{{item.CreateCustomerName}}</span>
+          </div>
+          <div class="zbyg-list-r" v-if="item.IsAppointed" style="width: auto">
+            <img style="min-width:60px;" src="../../images/ybm.png">
+            <div style="font-size: 10px">已报名：{{item.AppointCount}}人</div>
+          </div>
+          <div class="zbyg-list-r" v-else style="width: auto">
+            <img style="min-width:60px;" src="../../images/bm.png">
+            <div style="font-size: 10px">已报名：{{item.AppointCount}}人</div>
+          </div>
+        </div>
+        <div @click="liveDetail(item.Id, item.Title)" class="zbyg-list" :key="index"
+             v-for="(item,index) in liveListData">
+          <div class="zbyg-list-l" style="padding:10px 0 0 5px">
+            <img :src="item.ImgUrl" style="height:70px">
+          </div>
+          <div class="zbyg-list-c" style="text-align:left;width: calc(100% - 190px);">
+          <span class="zbygbt text-over-ellipsis"
+                style="width:100%;">{{item.Title}}</span><br>
+            <span class="zbygsbt"><img src="../../images/zbyg-time.png">{{item.StartTime}}</span><br>
+            <span class="zbygsbt text-over-ellipsis" style="width:100%;"><img
+              src="../../images/zbyg-user.png">{{item.CreateCustomerName}}</span>
+          </div>
+          <div class="zbyg-list-r" v-if="item.LiveStreamStateId == 1">
+            <button class="button-danger" style="min-width:60px;">直播</button>
+          </div>
+          <div class="zbyg-list-r" v-else>
+            <button class="button-primary" style="min-width:60px;" v-if="item.LiveStreamVideoExpense > 0">付费回看</button>
+            <button class="button-primary" style="min-width:60px;" v-else>回看</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="titlebg mt5">
+        <div class="titlebg-1" style="text-align: left"><img class="titlebg-img" src="../../images/wjk.png">
+          <span class="titlebg-f">微健康&nbsp;&nbsp;</span></div>
+        <div class="titlebg-2" @click="moreWeiList(studioID)"><span class="titlebg-f b2 ">更多</span></div>
+      </div>
+      <div class="zys-wjklist" style="text-align:left" v-if="weiList.length > 0">
+        <div class="video-tj-list" @click="weiDetail(weiItem.Id, weiItem.Title)" :key="weiIndex"
+             v-for="(weiItem,weiIndex) in weiList">
+          <div class="video-tj-list" v-if="weiItem.workRoomDynamicModeId == 0">
+            <div class="video-tj-listr" style="width: 100%">
+              <span class="font1421"
+                    style="margin-left:20px;width:300px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;">{{weiItem.Title}}</span>
+              <span class="video-tj-listr1 show-three-lines b3"
+                    style="margin-left:20px;width:90%;font-size: 1.2rem;">{{weiItem.Content}}</span>
+            </div>
+          </div>
+          <div class="video-tj-list" v-if="weiItem.workRoomDynamicModeId == 1">
+            <div class="video-tj-listl" style="float:left;height:80px;">
+              <div v-bind:style="{backgroundImage:'url(' + weiItem.ImgUrl + ')'}"
+                   style="height: 80px;background-position: center center;background-size: cover;background-repeat: no-repeat"></div>
+            </div>
+            <div class="video-tj-listr" style="width: 60%;margin-left: 5px">
+              <span class="font1421"
+                    style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">{{weiItem.Title}}</span>
+              <span class="video-tj-listr1 show-three-lines b3"
+                    style="margin-top:5px;font-size: 1.2rem;"
+                    v-html="weiItem.Content"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="titlebg mt5">
+        <div class="titlebg-1" style="text-align: left"><img class="titlebg-img" src="../../images/xgsp.png">
+          <span class="titlebg-f">相关视频</span></div>
+        <div class="titlebg-2" @click="moreVideoList(studioID)"><span class="titlebg-f b2">更多</span></div>
+      </div>
+      <div class="xgsp brw" v-if="videoList.length > 0" :style="videoListStyle">
+        <div class="video-image"
+             :style="[{backgroundImage:'url(' + videoItem.VideoImageUrl + ')',
+                  width: workRoomVideoImg}, workRoomVideoImgStyle]"
+             @click="videoDetail(videoItem.VideoId, videoItem.VideoName)"
+             :key="videoIndex" v-for="(videoItem,videoIndex) in videoList"
+             :id="videoItem.VideoId"
+        >
+        </div>
+      </div>
+    </div>
+    <div class="zzc" v-show="zzcShow" @click="zzcCancel">
+      <img class="zzcimg" :src="studioInformation.StudioWorkRoomImg" style="width: 100%;height: auto">
+    </div>
+    <div class="foot-show" v-if="showConsult">
+      <div class="doctor-room-bottom">
+        <div class="foot-left">
+          <img class="thanks-img" src="../../images/pl-zx.png" style="width: 14%;float: left;margin: 8px 0px 0px 30%;">
+          <span style="float: left;margin: 1px 0px 0px 6px;" @click="customerAdmire(studioInformation.Id)">致谢</span>
+        </div>
+        <div v-if="!isPayCall">
+          <div class="foot-right">
+              <span style="float: left;font-weight: 100;"
+                    @click="consultFunc(consultFunction)">
+                      {{showConsultContent}}
+              </span>
+            <span style="font-size: 1.4rem;float: left;" v-if="(showConsultMoney - 0) != 0">
+                ({{showConsultMoney}}元)
+              </span>
+            <span style="font-size: 1.4rem;float: left;" v-else>
+                (免费)
+              </span>
+          </div>
+        </div>
+        <div v-else>
+          <div class="foot-right">
+            <a href="tel://4008867170">
+                <span style="float: left;font-weight: 100;color: white;">
+                        {{showConsultContent}}
+                </span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</template>
+<script scoped>
+  import LiveList from '@/components/livelist/LiveList';
+  import IsLiving from '@/components/livelist/IsLiving';
+  import TeamCustomers from '@/components/studio/TeamCustomer';
+  import * as constant from '../../configs/constant';
+  import {Toast} from 'mint-ui';
+  import {getStore, removeStore} from '../../store/mlocalstorge';
+
+  var maxLength = window.screen.width * 1.2;
+  var timeOut;
+  var startTouchedTime;
+  var endTouchedTime;
+
+  export default {
+    data() {
+      return {
+        studioInfo: {},
+        teamCustomers: [],
+        note2: "",
+        canclick: false,
+        headurl: require('../../assets/default_avatar.png'),
+        creater: "",
+        isLiving: false,
+        isshow: false,
+        isattention: true,
+        studioInformation: Object,
+        videoIntro: 0,
+        newLive: Object,
+        liveListData: [],
+        yuList: [],
+        weiList: [],
+        videoList: [],
+        hotContent: Object,
+        studioID: "",
+        subscribe: false,
+        zzcShow: false,
+        showConsult: false,
+        showConsultContent: '',
+        showConsultMoney: '',
+        consultFunction: '',
+        currentCount: -1,
+        isPayCall: false,
+        showPersonalFunction: true,
+        touch: {
+          count: 1,
+          startX: 0,//开始触摸的位置
+          moveX: 0,//滑动时的位置
+          endX: 0,//结束触摸的位置
+          disX: 0,//移动距离
+          disY: 0,//Y轴移动
+          startY: 0,//Y轴开始触摸位置
+          slideEffect: {
+            transform: "translateX(0px)"
+          },//滑动时的效果,使用v-bind:style="deleteSlider"
+          moveDistance: 0 //偏移总量
+        },
+        baseStyle: {
+          width: "150%"
+        },
+        workRoomVideoImgStyle: {
+          width: document.documentElement.clientWidth * 0.26 + 'px',
+          height: document.documentElement.clientWidth * 0.26 * 9 / 16 + 'px',
+        },
+        videoListStyle: {
+          width: "100%",
+          height: document.documentElement.clientWidth * 0.26 * 9 / 16 + 'px',
+        },
+      }
+    },
+    components: {
+      LiveList, IsLiving, TeamCustomers
+    },
+
+    computed: {
+      getUserIcons() {
+        return this.$store.state.yipong;
+      },
+      teamIsShow() {
+        if (this.studioInfo.WorkRoomCustomers != null) {
+          if (this.studioInfo.WorkRoomCustomers.length != 1) {
+            return true;
+          }
+          return false;
+        }
+      }
+    },
+    watch: {},
+    methods: {
+      touchStart: function (ev, content, amount, count) {
+        event;
+        timeOut = setTimeout(() => {
+          this.selectFunction(ev, content, amount, count);
+        }, 200);
+        if (this.touch.count < 5) {
+          return false;
+        }
+        startTouchedTime = new Date().getTime();
+        event.preventDefault();
+
+        if (event.touches.length == 1) {    //tounches类数组，等于1时表示此时有只有一只手指在触摸屏幕
+          this.touch.startX = event.touches[0].clientX; // 记录开始位置
+          this.touch.startY = event.touches[0].clientY; // 记录开始位置
+        }
+      },
+      touchMove: function (ev) {
+        ev = ev || event;
+        if (this.touch.count < 5) {
+          return false;
+        }
+        ev.preventDefault();
+        if (ev.touches.length == 1) {
+          //滑动时距离浏览器左侧的距离
+          this.touch.moveX = ev.touches[0].clientX;
+          //实时的滑动的距离-起始位置=实时移动的位置
+          this.touch.disX = this.touch.moveX - this.touch.startX;
+          this.touch.disY = ev.touches[0].clientY - this.touch.startY;
+          var time = endTouchedTime - startTouchedTime;
+//                if ((Math.abs(this.touch.disX) > 60 && (time < 200)) || time >= 200 || (Math.abs(this.touch.disX) < 40 && time < 200)) {
+          if ((Math.abs(this.touch.disX) > 60 && (time < 200)) || time >= 200 || (Math.abs(this.touch.disY) > 60 && time < 500)) {
+            clearTimeout(timeOut);
+            startTouchedTime = 0;
+          }
+
+          if ((this.touch.moveDistance + this.touch.disX) >= 0) {
+            this.touch.slideEffect.transform = 'translateX(0px)';
+          } else if ((this.touch.moveDistance + this.touch.disX - document.documentElement.clientWidth + maxLength) <= 0) {
+            this.touch.slideEffect.transform = 'translateX(' + (document.documentElement.clientWidth - maxLength - 10) + 'px)';
+          } else {
+            this.touch.slideEffect.transform = 'translateX(' + (this.touch.moveDistance + this.touch.disX) + 'px)';
+          }
+        }
+      },
+      touchEnd: function (ev) {
+        endTouchedTime = new Date().getTime();
+        if (((endTouchedTime - startTouchedTime) < 200 && startTouchedTime != 0) || this.touch.count < 5) {
+          return false;
+        }
+        ev = ev || event;
+        ev.preventDefault();
+        if (ev.changedTouches.length == 1) {
+          let endX = ev.changedTouches[0].clientX;
+          this.touch.disX = endX - this.touch.startX;
+          this.touch.moveDistance += this.touch.disX;
+          if (this.touch.moveDistance >= 0) {
+            this.touch.moveDistance = 0;
+          } else if (this.touch.moveDistance - document.documentElement.clientWidth + maxLength <= 0) {
+            this.touch.moveDistance = document.documentElement.clientWidth - maxLength;
+          }
+
+          if (this.touch.moveDistance >= 0) {
+            this.touch.slideEffect.transform = 'translateX(0px)';
+          } else if ((this.touch.moveDistance - document.documentElement.clientWidth + maxLength) <= 0) {
+            this.touch.slideEffect.transform = 'translateX(' + (document.documentElement.clientWidth - maxLength - 10) + 'px)';
+          } else {
+            this.touch.slideEffect.transform = 'translateX(' + (this.touch.moveDistance) + 'px)';
+          }
+        }
+      },
+
+      // 热度咨询详情
+      zxDetail(advisoryID, workRoomId) {
+        this.$router.push({path: '/chat/chatInfo/' + advisoryID + '/' + workRoomId});
+      },
+
+      // 预约详情
+      yuLiveDetail(yuLiveID, shareTitle) {
+        shareTitle = shareTitle ? shareTitle : '预约详情';
+        this.$router.push({path: '/LiveListyuDetail/' + yuLiveID + '/' + shareTitle})
+      },
+      // 看大图
+      bigImg() {
+        this.zzcShow = true;
+      },
+      zzcCancel() {
+        this.zzcShow = false;
+      },
+      // 查看个人介绍视频
+      viewVideo(studioID) {
+        this.$router.push({path: '/IntroVideo/' + studioID});
+      },
+      // App下载
+      downLoadApp() {
+        window.location.href = 'http://weixin.yipong.com/DownLoad/index.html';
+      },
+      // 取消关注、关注工作室
+      unsubscribe() {
+        let userInfo = window.localStorage.getItem("userInfo");
+        userInfo = JSON.parse(userInfo);
+        let params = {
+          "UserID": userInfo.UserId,
+          "WorkRoomId": this.$route.params.StudioID,
+          "IsFollow": false,
+        };
+        this.api.FollowWorkRoom(params).then(res => {
+          if (res.Result == 1) {
+            Toast("取消关注！");
+            this.subscribe = false;
+          } else {
+            Toast("取消关注失败，请稍后再试！");
+          }
+        });
+      },
+      subscribeRoom() {
+        let userInfo = window.localStorage.getItem("userInfo");
+        userInfo = JSON.parse(userInfo);
+        let params = {
+          "UserID": userInfo.UserId,
+          "WorkRoomId": this.$route.params.StudioID,
+          "IsFollow": true,
+        };
+        this.api.FollowWorkRoom(params).then(res => {
+          if (res.Result == 1) {
+            Toast("关注成功！");
+            this.subscribe = true;
+          } else {
+            Toast("关注失败，请稍后再试！");
+          }
+        });
+      },
+      // 医生详情
+      docDetail(event) {
+        this.$router.push({path: '/DoctorDetail/' + event});
+      },
+      // 更多热度咨询
+      moreHot(event) {
+        this.$router.push({path: '/HotAdvisory/' + event});
+      },
+      // 更多微健康
+      moreWeiList(event) {
+        this.$router.push({path: '/WeHealthList/' + event});
+      },
+      // 直播列表
+      LiveList(event) {
+        this.$router.push({path: '/liveList/' + event});
+      },
+      // 直播详情
+      liveDetail(event, shareTitle) {
+        shareTitle = shareTitle ? shareTitle : '直播详情';
+        this.$router.push({path: '/LiveDetail/' + event + '/' + shareTitle});
+      },
+      // 进入微健康详情
+      weiDetail(event, shareTitle) {
+        shareTitle = shareTitle ? shareTitle : '微健康详情';
+        this.$router.push({path: '/WeHealthDetail/' + event + '/' + shareTitle});
+      },
+      // 进入相关视频列表
+      moreVideoList(event) {
+        this.$router.push({path: '/StudioRelatedVideoList/' + event});
+      },
+      // 进入相关视频详情
+      videoDetail(event, shareTitle) {
+        shareTitle = shareTitle ? shareTitle : '视频详情';
+        this.$router.push({path: '/VideoDetail/' + event + '/' + shareTitle});
+      },
+      customerAdmire(id) {
+        this.$router.push({path: '/pay/CustomerAdmire/' + id + "/2106"});
+      },
+      createOnlineConsult() {
+        this.$router.push({path: '/CreateOnlineConsult/' + this.studioInformation.CreateCustomerId + '/' + this.studioInformation.Id + '/' + this.showConsultMoney + '/' + (this.currentCount + 1)});
+      },
+      selectFunction(funcName, content, amount, count) {
+        if (funcName != "payCall") {
+          this.isPayCall = false;
+          this.currentCount = count;
+          this.showConsult = true;
+          this.showConsultContent = content;
+          this.showConsultMoney = (amount * 1.0).toFixed(2);
+          this.consultFunction = funcName;
+        } else {
+          this.isPayCall = true;
+          this.currentCount = count;
+          this.showConsult = true;
+          this.showConsultContent = content;
+          this.showConsultMoney = "";
+          this.consultFunction = "";
+        }
+
+      },
+      consultFunc(funcName) {
+        eval("this." + funcName + "()");
+      },
+      liveData(UserId){
+        let livingParam = {
+          "UserId": UserId,
+          "StatusId": 4,
+          "PageIndex": 1,
+          "PageSize": 10,
+          "OrderMode": 1,
+        }
+        let yuLivingParam = {
+          "UserId": UserId,
+          "StatusId": 0,
+          "PageIndex": 1,
+          "PageSize": 10,
+          "OrderMode": 1
+        }
+        let newLivingParam = {
+          "UserId": UserId,
+          "StatusId": 1,
+          "PageIndex": 1,
+          "PageSize": 1,
+          "OrderMode": 1,
+        }
+        // 预直播
+        this.api.getLiveStreams(yuLivingParam).then(res => {
+          for (let i = 0; i < res.Data.Data.length; i++) {
+            if (this.$route.params.StudioID == res.Data.Data[i].WorkRoom.Id) {
+              let listData = {
+                "Id": res.Data.Data[i].Id,
+                "Title": res.Data.Data[i].Title,
+                "ImgUrl": res.Data.Data[i].Picture.Url,
+                "CreateCustomerName": res.Data.Data[i].WorkRoom.Name,
+                "StartTime": res.Data.Data[i].StartDateTime,
+                "IsAppointed": res.Data.Data[i].IsAppointed,
+                "AppointCount": res.Data.Data[i].AppointCount,
+              };
+              this.yuList.push(listData);
+              if (this.yuList.lenght > 5) {
+                break;
+              }
+            }
+          }
+        });
+        // 正在直播
+        this.api.getLiveStreams(newLivingParam).then(res => {
+          if (res.Data.Data[0] && this.$route.params.StudioID == res.Data.Data[0].WorkRoom.Id) {
+            this.newLive = {
+              "Id": res.Data.Data[0].Id,
+              "Title": res.Data.Data[0].Title,
+              "ImgUrl": res.Data.Data[0].Picture.Url,
+              "FollowCount": res.Data.Data[0].WorkRoom.FollowCount,
+              "LiveStreamStateId": res.Data.Data[0].LiveStreamStateId,
+              "LiveStreamVideoExpense": res.Data.Data[0].LiveStreamVideoExpense,
+            }
+          }
+        });
+        // 回看
+        this.api.getLiveStreams(livingParam).then(res => {
+          let time = 0;
+          let max = 0;
+          if (this.yuList.length < 3) {
+            max = 3 - this.yuList.length;
+          }
+          for (let i = 0; i < res.Data.Data.length; i++) {
+            if (time > (max - 1)) {
+              break;
+            }
+            if (res.Data.Data[i].LiveStreamStateId == 1) {
+              continue;
+            }
+            let listData = {
+              "Id": res.Data.Data[i].Id,
+              "Title": res.Data.Data[i].Title,
+              "ImgUrl": res.Data.Data[i].Picture.Url,
+              "CreateCustomerName": res.Data.Data[i].WorkRoom.Name,
+              "StartTime": res.Data.Data[i].RealStartDateTime,
+              "LiveStreamStateId": res.Data.Data[i].LiveStreamStateId,
+              "LiveStreamVideoExpense": res.Data.Data[i].LiveStreamVideoExpense,
+            };
+            this.liveListData.push(listData);
+            time++;
+          }
+          this.liveListData = this.liveListData.slice(0);
+        });
+      },
+    },
+
+    mounted() {
+      // 工作室信息
+      this.studioID = this.$route.params.StudioID;
+      let params = {
+        "id": this.$route.params.StudioID,
+      }
+      this.api.getStudioDetail(params).then(res => {
+        this.liveData(res.Data.CreateCustomerId);
+        res.Data.StudioWorkRoomImg = res.Data.Picture.Url;
+        if (res.Data.AdeptField != null) {
+          res.Data.AdeptField = res.Data.AdeptField.split(" ");
+        } else {
+          res.Data.AdeptField = [];
+        }
+        res.Data.fraction = res.Data.Grade / 2;
+        if (String(res.Data.fraction).indexOf(".") > -1) {
+          res.Data.solidGrade = parseInt(res.Data.fraction);
+          res.Data.harfGrade = true;
+          res.Data.hollowGrade = 4 - res.Data.solidGrade;
+        } else {
+          res.Data.solidGrade = res.Data.fraction;
+          res.Data.fraction = res.Data.fraction + ".0";
+          res.Data.harfGrade = false;
+          res.Data.hollowGrade = 5 - res.Data.solidGrade;
+        }
+        if (res.Data.VideoIntroUrl != null && (res.Data.VideoIntroUrl.indexOf(".mp4") > 0)) {
+          this.videoIntro = 1;
+        }
+        this.studioInformation = res.Data;
+        this.subscribe = res.Data.IsFollowed;
+        if (this.studioInformation.IsOnlineConsult && this.studioInformation.IsRecoveryGuide
+          && this.studioInformation.IsVideoConsult && this.studioInformation.IsFaceDiagnose
+          && this.studioInformation.IsOutDiagnosis) {
+          this.touch.count = 5;
+        }
+        this.$store.state.shareData.imgUrl = res.Data.Picture.Url;
+        this.$store.state.shareData.title = res.Data.Name;
+        var description = "";
+        res.Data.Hospital != null ? description = description + ' · ' + res.Data.Hospital : description
+        res.Data.Department != null ? description = description + ' · ' + res.Data.Department : description;
+        res.Data.Technical != null ? description = description + ' · ' + res.Data.Technical : description;
+        this.$store.state.shareData.description = res.Data.Hospital + ' · ' + res.Data.Department + ' · ' + res.Data.Technical;
+        //是否有在线咨询等功能
+        this.showPersonalFunction = this.studioInformation.IsOnlineConsult || this.studioInformation.IsRecoveryGuide
+          || this.studioInformation.IsVideoConsult || this.studioInformation.IsFaceDiagnose
+          || this.studioInformation.IsOutDiagnosis;
+      });
+      // 热度咨询
+      let hotParams = {
+        "ConsultTypeId": 0,
+        "StatusId": 2,
+        "WorkRoomId": this.$route.params.StudioID,
+        "CustomerHealthyRecordId": -1,
+        "Title": "",
+        "CustomerId": -1,
+        "PageIndex": 1,
+        "PageSize": 1,
+      }
+      this.api.getHotOnline(hotParams).then(res => {
+        if (res.Data.Data.length > 0) {
+          res.Data.Data[0].data = 1;
+          this.hotContent = res.Data.Data[0];
+        } else {
+          this.hotContent = {
+            "data": 0
+          }
+        }
+      });
+      // 微健康列表信息
+      let weiParams = {
+        "WorkRoomId": this.$route.params.StudioID,
+        "WorkRoomDynamicTypeId": -1,
+        "PageIndex": 1,
+        "PageSize": 3,
+      }
+      this.api.getWorkRoomDynamics(weiParams).then(res => {
+        for (let i = 0; i < res.Data.TotalCount; i++) {
+          if (i > 2) {
+            break;
+          }
+          let ImgUrl = "";
+          if (res.Data.Data[i].fileList.length > 0 && res.Data.Data[i].workRoomDynamicModeId == 1) {
+            ImgUrl = res.Data.Data[i].fileList[0].Url;
+          }
+          ;
+          let WeData = {
+            "Id": res.Data.Data[i].studioStatusId,
+            "ImgUrl": ImgUrl,
+            "Title": res.Data.Data[i].title,
+            "Content": res.Data.Data[i].content,
+            "workRoomDynamicModeId": res.Data.Data[i].workRoomDynamicModeId,
+          };
+          this.weiList.push(WeData);
+        }
+      });
+      //工作室相关视频
+      let videoParams = {
+        "WorkRoomId": this.$route.params.StudioID,
+        "PageIndex": 1,
+        "PageSize": 3,
+      }
+      this.api.getWorkRoomVideos(weiParams).then(res => {
+        this.videoList = res.Data;
+      });
+    }
+  }
+</script>
+<style scoped lang="scss">
+  @import '../../common/style.css';
+
+  .zzc {
+    position: fixed;
+    z-index: 999;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 1);
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .zzcimg {
+    max-width: 100%;
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin-top: 20%;
+    z-index: 1000;
+  }
+
+  .studio-detail .gzs-gnxz {
+    height: 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .studio-detail .gzs-gn {
+    height: 70px;
+  }
+
+  .studio-detail .gzs-gnxz .gzs-gnw {
+    width: 16%;
+  }
+
+  .studio-detail .foot-show {
+    position: fixed;
+    bottom: 0;
+    color: white;
+    width: 100%;
+    height: 36px;
+    line-height: 36px;
+    font-size: 1.6rem;
+    z-index: 999;
+  }
+
+  .studio-detail .doctor-room-bottom {
+    width: 100%;
+    height: 100%;
+  }
+
+  .studio-detail .doctor-room-bottom .foot-left {
+    background-color: #F2F2F2;
+    width: 40%;
+    height: 100%;
+    color: #747474;
+    float: left;
+  }
+
+  .studio-detail .doctor-room-bottom .foot-right {
+    width: 40%;
+    height: 100%;
+    float: left;
+    background-color: #4593F6;
+    padding: 1px 0 0 20%;
+  }
+
+  .studio-detail .gzs-gn.active {
+    background-color: #D3ECFC;
+    border-radius: 10px;
+  }
+
+  .studio-detail .video-image {
+    background-position: center center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    text-align: left;
+    margin: 0px 2%;
+    float: left;
+  }
+
+  .attention-button {
+    top: 5px;
+    right: 10px;
+    position: absolute;
+  }
+
+  .head-image {
+    width: 70px;
+    height: 100%;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    border-radius: 70px;
+  }
+</style>

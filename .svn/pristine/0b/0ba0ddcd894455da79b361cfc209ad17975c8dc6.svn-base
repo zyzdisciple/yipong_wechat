@@ -1,0 +1,401 @@
+<template>
+    <div :class="overlay_classes" v-show="is_open" onClick="event.cancelBubble = true" v-on:click="_onOverlayClick" @touchmove.prevent>
+        <div :class="modal_classes" :style="overlay_style">
+            <div class="content">
+                <div class="head">
+                    <div class="modaltitle">
+                        完善手机号码
+                    </div>
+
+                  <!--关闭功能, 生产环境需注释-->
+                  <!--<div class="close-modal" @click="close()">
+                      <img src="../../images/close-2.png" />
+                  </div>-->
+                    <div class="textfieldDiv">
+                        <input placeholder='手机号:' class="textfieldTel" v-model="username" maxlength="15" />
+                        <div class="buttonFloatLeft">
+                            <input placeholder='验证码:' class="textfieldPsd" v-model="code" maxlength="8" />
+                            <button type="button" :disabled="btnIsDisabled" class="newbuttonblue" @click="sendMessage">{{codeString}}</button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="red-prompt">首次登陆需要完善手机号码(仅需一次)</div>
+                <div class="text-center" @click="commitcode">
+                    <div class="input">{{state}}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+<script scoped>
+import { Toast } from 'mint-ui'
+import * as constant from '../../configs/constant';
+import { setStore, getStore, removeStore } from '../../store/mlocalstorge';
+export default {
+    name: 'ModalLogin',
+    data() {
+        return {
+            visible: false,
+            is_open: false,
+            is_bouncing: false,
+            tabs: [],
+            codeString: '获取验证码',
+            count: 60,
+            btnIsDisabled: false,
+            username: '',
+            state: '完成',
+            code: '',
+            userInfo: {},
+        }
+    },
+    props: {
+        confirmTitle: {
+            type: String,
+            required: false,
+            default: '检测一下'
+        },
+        cancleTitle: {
+            type: String,
+            required: false,
+            default: '取消'
+        },
+        text: {
+            type: String,
+            required: false,
+            default: '提示'
+        },
+        height: {
+            type: Number,
+            required: false,
+            default: 230,
+        },
+
+        confirmBackgroundColor: {
+            type: String,
+            required: false,
+            default: '#FFFFFF'
+            //default: "url('../static/assets/backLightBlue.png') round",
+        },
+
+        cancleBackgroundColor: {
+            type: String,
+            required: false,
+            default: 'linear-gradient(to right, #fff	, #fff	)'
+        },
+        confirmVisible: {
+            type: String,
+            required: false,
+            default: "hidden"
+        },
+
+        cancleVisible: {
+            type: String,
+            required: false,
+            default: "visible"
+        },
+    },
+    methods: {
+
+        /**
+         * Open the dialog
+         * Emits an event 'open'
+         */
+        open() {
+            this.is_open = true
+            setTimeout(() => this.visible = true, 30)
+            this.$emit('open')
+        },
+
+        /**
+         * Close the dialog
+         * Emits an event 'close'
+         */
+        close() {
+            this.visible = false
+            setTimeout(() => this.is_open = false, 0.2)
+            this.$emit('close')
+            // this.close();
+        },
+
+        confirmClick() {
+            this.$emit('confirmClick')
+            // this.close();
+        },
+
+        cancleClick() {
+            this.$emit('cancleClick')
+            // this.close();
+        },
+
+        _onOverlayClick(event) {
+            if (!event.target.classList || event.target.classList.contains('sweet-modal-clickable')) {
+                if (this.blocking) {
+                    if (this.pulseOnBlock) this.bounce()
+                } else {
+                    //this.close()
+                }
+            }
+        },
+        timedCount() {
+            this.count = this.count - 1;
+            if (this.count > 0) {
+                this.t = setTimeout(() => {
+                    this.timedCount();
+                }, 1000);
+                this.codeString = "重新获取(" + this.count + "s)";
+                this.btnIsDisabled = true;
+
+            } else {
+                this.count = 60;
+                this.codeString = '获取验证码';
+                this.btnStyle = 1;
+                this.btnIsDisabled = false;
+            }
+        },
+        commitcode() {
+            if (!this.code) {
+                Toast("请输入验证码");
+                return;
+            }
+            let params = {
+                "UserName": this.username,
+                "VerifyCode": this.code,
+            }
+
+            this.api.getConsummaVerifyCode(params).then(res => {
+                if (res.Data.IsImproved) {
+                    Toast("信息完善成功");
+                    this.close();
+                } else {
+                    Toast(res.ResultMessage);
+                }
+
+            }, error => {
+                Toast("验证码错误");
+            })
+        },
+        sendMessage() {
+
+            if (!this.username) {
+                Toast("请输入手机号");
+                return;
+            }
+            if (this.checkMobile(this.username) == false) {
+                Toast("手机号码格式错误");
+                return;
+            }
+            this.timedCount();
+            let data = {
+                "mobile": this.username,
+            }
+            this.api.getRequestVerifyCode(data)
+                .then(res => {
+                    Toast("验证码发送成功");
+
+                },
+                error => {
+                    clearTimeout(this.t);
+                    this.count = 60;
+                    this.codeString = '获取验证码';
+                    this.btnIsDisabled = false;
+                })
+        },
+        checkMobile() {
+            let re = /^1[34578]\d{9}$/;
+            if (re.test(this.username)) {
+                return true;
+            } else {
+                return false
+            }
+        },
+    },
+    mounted() {
+        this.userInfo = getStore("userInfo");
+    },
+    computed: {
+
+        confirm_style() {
+            return {
+                "background": this.confirmBackgroundColor,
+                "visibility": this.confirmVisible,
+            }
+        },
+
+        cancle_style() {
+            if (this.confirmVisible == 'hidden') {
+                this.cancleBackgroundColor = "url('../static/assets/backLightBlue.png') round";
+            }
+            return {
+                "background": this.cancleBackgroundColor,
+                "visibility": this.cancleVisible,
+            }
+        },
+        overlay_classes() {
+            return [
+                'sweet-modal-overlay',
+                'sweet-modal-clickable',
+                {
+                    'is-visible': this.visible,
+                    blocking: this.blocking
+                }
+            ]
+        },
+
+        modal_classes() {
+            return [
+                'sweet-modal',
+                {
+                    'is-visible': this.visible,
+                    bounce: this.is_bouncing,
+                }
+            ]
+        },
+        overlay_style() {
+            return {
+
+            }
+        }
+    },
+}
+
+</script>
+<style scoped lang="scss">
+@import '../../common/mixin.scss';
+@import '../../common/variable.scss';
+.blue {
+    color: $color-background-textblue;
+}
+
+.sweet-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    text-align: center;
+
+
+    width: 100vw;
+    height: 100vh;
+
+    overflow-y: auto;
+    z-index: 2003;
+
+  font-size: 1.4rem;
+
+    -webkit-font-smoothing: antialiased; // Theming
+    background: rgba(15, 15, 25, 0.5); // Animation
+    // backgroundcolor:rgba(15,15,25,0.3)
+    opacity: 0;
+    transition: opacity 0.3s;
+    transform: translate3D(0, 0, 0);
+    -webkit-perspective: 500px;
+
+    &.is-visible {
+        opacity: 1;
+    }
+}
+
+.red-prompt {
+    color: red;
+    padding: 0px 15PX;
+    text-align: left;
+    margin-top: 10px;
+  font-size: 1.3rem;
+}
+
+.content {
+    height: 100%;
+    width: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    .head {
+        width: 100%;
+        .modaltitle {
+          font-size: 1.7rem;
+            padding-top: 18px;
+            color: $color-background-textblue;
+        }
+
+        .textfieldDiv {
+            width: 100%;
+            border: 1px solid rgba(15, 15, 25, 0.3);
+            border-left: none;
+            border-right: none;
+            margin-top: 20px;
+            .textfieldTel {
+                width: 90%;
+                border-radius: none;
+                padding: 10px 15PX;
+            }
+            .buttonFloatLeft {
+                width: 100%;
+                border-top: 1px solid rgba(15, 15, 25, 0.3);
+                display: flex;
+                .textfieldPsd {
+                    width: 60%;
+                    margin-left: 5%;
+                    padding: 10px 15PX;
+                    padding-left: 0px;
+                }
+                .newbuttonblue {
+                    height: 100%;
+
+                    display: flex;
+                    justify-content: center;
+                    align-content: center;
+                    align-items: center;
+                    align-self: center;
+                    width: 100px;
+                    border: none;
+                  font-size: 1.3rem;
+                    outline: none;
+                    color: $color-background-mainblue;
+                    background: white;
+                }
+            }
+        }
+    }
+
+    .close-modal img {
+      position: absolute;
+      width: 15px;
+      top: 5px;
+      right: 5px;
+    }
+    .text-center {
+        margin: 10px 10px 10px;
+        .input {
+            width: 100%;
+            @include border-radius;
+          font-size: 1.7rem;
+            background-color: $color-background-textblue;
+            color: white;
+            height: 40px;
+            line-height: 40px;
+        }
+    }
+}
+
+.sweet-modal {
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    background: #fff;
+    box-shadow: 0px 8px 46px rgba(#000, 0.08), 0px 2px 6px rgba(#000, 0.03);
+    position: absolute;
+    top: 50%;
+    left: 50%; // transform: translate(-50%, -50%); // Done by the animation later
+    width: 80%;
+    max-width: 640px;
+    border-radius: 5px/5px;
+    ;
+    overflow: hidden;
+    &.is-visible {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+    }
+}
+</style>

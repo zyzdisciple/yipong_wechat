@@ -1,0 +1,107 @@
+
+<template>
+    <div class="foot-tab">
+        <div class="page-tab-container" ref="wrapper" :style="{ height: wrapperHeight + 'px' }">
+            <VideoList ref="videolist"></VideoList>
+        </div>
+        <div class="nav">
+          <div class="mint-tabbar is-fixed" >
+              <a class="mint-tab-item is-selected" @click="videoHome()">
+                  <div class="mint-tab-item-icon"><img src="../images/main-nav-1-1.png"></div>
+                  <div class="mint-tab-item-label">
+                      视频
+                  </div>
+              </a>
+              <a class="mint-tab-item" @click="liveHome">
+                  <div class="mint-tab-item-icon"><img src="../images/main-nav-2-0.png"></div>
+                  <div class="mint-tab-item-label">
+                      直播
+                  </div>
+              </a>
+              <a class="mint-tab-item" @click="findHome(1)"  v-if="IsCertificate">
+                  <div class="mint-tab-item-icon"><img src="../images/main-nav-3-0.png"></div>
+                  <div class="mint-tab-item-label">
+                      工作室
+                  </div>
+              </a>
+              <a class="mint-tab-item" @click="findHome(0)"  v-else>
+                  <div class="mint-tab-item-icon"><img src="../images/main-nav-3-0.png"></div>
+                  <div class="mint-tab-item-label">
+                      找医生
+                  </div>
+              </a>
+              <a class="mint-tab-item" @click="myHome">
+                  <div class="mint-tab-item-icon"><img src="../images/main-nav-4-0.png"></div>
+                  <div class="mint-tab-item-label">
+                      我的
+                  </div>
+              </a>
+          </div>
+        </div>
+    </div>
+</template>
+
+<script>
+import VideoList from '@/components/VideoList'
+
+export default {
+    data() {
+        return {
+            wrapperHeight: 0,
+            IsCertificate: false,
+        };
+    },
+    components: {
+        VideoList
+    },
+
+    mounted() {
+        // 判断当前进入人员的类型
+        this.api.myStatus({}).then( res => {
+          this.IsCertificate = res.Data.IsCertificate;
+        });
+    },
+    methods: {
+        videoHome() {
+            // 视频主页点击不刷新
+        },
+        liveHome() {
+            this.$router.push({ name: '直播' });
+        },
+        findHome(flag) {
+            // 判断医生或者患者
+            if(flag == 1) {
+                window.location.href ='http://weixin.yipong.com/DownLoad/index.html';
+            } else {
+                this.$router.push({ name: '找医生' });
+            }
+        },
+        myHome() {
+            this.$router.push({ name: '个人主页' });
+        },
+    },
+
+};
+</script>
+
+<style lang="scss" scoped>
+@import '../common/style.css';
+.foot-tab {
+    width: 100%;
+    height: 100%;
+}
+.tab-container3{
+
+}
+.nav {
+    background: white;
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    justify-content: space-around;
+    margin: 0 5px;
+    z-index: 999;
+}
+</style>

@@ -1,0 +1,102 @@
+
+<template>
+<div class="weHealthList" v-show="init">
+  <div v-if="hasInited">
+  <div v-if="weiList.length > 0">
+      <div class="zbyg-list" style="margin-bottom:6px;height:auto;" :key="Index" v-for="(Item,Index) in weiList">
+          <div style="height:100px" @click="weiDetail(Item.studioStatusId, Item.title)" v-if="Item.workRoomDynamicModeId == 1">
+              <div class="wjklist2-title" style="width:100px;float:left;overflow: hidden;height:80px;padding:2% 0">
+                  <img :src="Item.fileList[0].Url" v-if="Item.fileList.length > 0" style="width: inherit"/>
+              </div>
+              <div class="wjklist2-contect" style="width:60%;text-align:left;float:left">
+                <span class="zbygbt"
+                      style="width:100%;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;font-size: 1.5rem;font-weight:bold;margin-bottom: 5px;">{{Item.title}}</span>
+                  <span class="zbygsbt" v-html="Item.content" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#888"></span>
+              </div>
+          </div>
+          <div style="width:100%;" @click="weiDetail(Item.studioStatusId, Item.title)" v-if="Item.workRoomDynamicModeId == 0">
+              <div class="wjklist2-title" style="height:80px">
+                  <div class="wjklist2-title-r">
+                      <img style="height:40px;width:40px;border-radius:40px" :src="Item.WorkRoom.Picture.Url">
+                  </div>
+                  <div class="wjklist2-title-l" style="height:45px;margin-left:6px;text-align:left">
+                      <div class="t1">{{Item.WorkRoom.Name}}</div>
+                      <div class="t2">{{Item.createTime}}
+                        <div class="gzs-tabxq">
+                            {{Item.customerCommentCounts}}评论
+                        </div>
+                      </div>
+                  </div>
+              </div>
+              <div class="wjklist2-contect" style="text-align:left;">
+                  <div style="margin: 6px 0">{{Item.title}}</div>
+                  <div v-html="Item.content" style="word-break: break-all;word-wrap: break-word;"></div><br>
+                  <div v-if="Item.fileList.length > 0">
+                      <div v-if="Item.resourceTypeId == 2">
+                          <img :src="imgItem.ThumbUrl" style="width: 60%;margin-right: 2%" :key="imgIndex" v-for="(imgItem,imgIndex) in Item.fileList">
+                      </div>
+                      <div v-else>
+                          <img :src="imgItem.Url" style="width: 30%;margin-right: 2%" :key="imgIndex" v-for="(imgItem,imgIndex) in Item.fileList">
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+  </div>
+</div>
+</template>
+ <script scoped>
+
+import * as constant from '../../configs/constant';
+import Modal from '@/components/modal/Modal';
+import { getStore, removeStore } from '../../store/mlocalstorge';
+import { Toast,Indicator } from 'mint-ui';
+import { getWXPayInfo } from '../../utils/WXPay';
+export default {
+    components: {
+        Modal
+    },
+    data() {
+        return {
+            weiList: [],
+            hasInited: false,
+            init: false,
+        }
+    },
+    methods: {
+        //进入微健康详情
+        weiDetail(id, shareTitle) {
+            shareTitle = shareTitle ? shareTitle : '微健康';
+            this.$router.push({ path: '/WeHealthDetail/' + id + '/' + shareTitle})
+        },
+    },
+    props: {
+        teamInfo: Object,
+        index: Number,
+        type: Number,
+    },
+    mounted() {
+        let workRoomID = -1;
+        if(this.$route.params.StudioID > 0) {
+            workRoomID = this.$route.params.StudioID;
+        }
+        let params = {
+            "WorkRoomId": workRoomID,
+            "WorkRoomDynamicTypeId": -1,
+            "PageIndex": 1,
+            "PageSize": 100,
+        };
+        this.api.getWorkRoomDynamics(params).then(res => {
+            this.weiList = res.Data.Data;
+            this.hasInited = true;
+            this.init = true;
+        });
+    }
+
+
+}
+</script>
+<style scoped lang="scss" >
+@import '../../common/style.css';
+</style>

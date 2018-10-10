@@ -1,0 +1,63 @@
+<template>
+<div class="StudioRelatedVideoList">
+    <div class="mint-content" :key="index" v-for="(item,index) in VideoList" v-if="VideoList.length > 0">
+        <div class="mint-content-video">
+            <video-element
+                ref = "videoItem"
+                :videoUrl = "item.CloudUrl"
+                :posterImageUrl = "item.VideoImageUrl"
+                :videoId = "item.VideoID"
+            ></video-element>
+            <div class="mint-content-video-titlebg" style="z-index:0">
+                <div class="mint-content-video-title" style="text-align:left;width:300px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;">{{item.VideoName}}</div>
+            </div>
+        </div>
+        <div class="mint-content-video-banner" @click="clickvideodetail(item.VideoId, item.VideoName)">
+            <div class="mint-content-video-share" >
+                <div class="mint-content-video-share-view"><img src="../../images/view@1x.png">{{item.PreviewCount}}</div>
+            </div>
+            <div class="mint-content-video-share">
+                <div class="mint-content-video-share-view"><a><img src="../../images/chat@1x.png"></a>{{item.CommentCount}}</div>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<script>
+import VideoElement from '../video/VideoElement';
+export default {
+    components: {
+        VideoElement,
+    },
+    data() {
+        return {
+            VideoList: [],
+            PageIndex: 1,
+            PageSize: 20,
+        }
+    },
+    mounted() {
+        //工作室相关视频
+        let videoParams = {
+            "WorkRoomId": this.$route.params.StudioID,
+            "PageIndex": this.PageIndex,
+            "PageSize": this.PageSize,
+        }
+        this.api.getWorkRoomVideos(videoParams).then(res => {
+            this.VideoList = res.Data;
+        });
+    },
+    methods: {
+        // 进入视频详情
+        clickvideodetail(VideoID, shareTitle) {
+            shareTitle = shareTitle ? shareTitle : '视频详情';
+            this.$router.push({ path: '/VideoDetail/' + VideoID + '/' + shareTitle})
+        },
+    },
+}
+</script>
+
+<style scoped>
+
+</style>

@@ -1,0 +1,131 @@
+<template>
+<div class="MyCollectionWeHealth" v-show="init">
+    <div class="zbyg-list" style="margin-bottom:6px;height:auto;" :key="Index" v-for="(Item,Index) in list" v-if="list.length > 0">
+        <div style="height:100px"  v-if="Item.workRoomDynamicModeId == 1">
+            <div class="wjklist2-title" style="width:30%;float:left" @click="weiDetail(Item.studioStatusId, Item.title)">
+                <img :src="Item.fileList[0].Url" style="width:80px;height:60px;padding:10px" v-if="Item.fileList.length > 0"/>
+            </div>
+            <div class="wjklist2-contect" style="width:44%;text-align:left;float:left" @click="weiDetail(Item.studioStatusId)">
+                <span class="zbygbt" style="width:180px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;">{{Item.title}}</span><br>
+                <span class="zbygsbt" v-html="Item.content" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;"></span>
+            </div>
+            <div class="zbyg-list-r" style="width:auto;padding-top:10px;">
+                <button class="button-primary" @click="cancelCollection(Item.studioStatusId)">取消收藏</button>
+          </div>
+        </div>
+        <div style="height:300px;width:100%;overflow:hidden" v-if="Item.workRoomDynamicModeId == 0">
+            <div class="wjklist2-title" style="height:80px">
+                <div class="wjklist2-title-r" @click="weiDetail(Item.studioStatusId, Item.title)">
+                    <img style="height:40px;width:40px;border-radius:40px" :src="Item.WorkRoom.Picture.Url">
+                </div>
+                <div class="wjklist2-title-l" style="width:55%;height:45px;margin-left:6px;text-align:left" @click="weiDetail(Item.studioStatusId, Item.title)">
+                    <div class="t1">{{Item.WorkRoom.Name}}</div>
+                    <div class="t2">{{Item.createTime}} {{Item.customerCommentCounts}}评论</div>
+                </div>
+                <div class="zbyg-list-r" style="width:auto;padding-top:10px;">
+                  <button class="button-primary" @click="cancelCollection(Item.studioStatusId)">取消收藏</button>
+                </div>
+            </div>
+
+            <div class="wjklist2-contect" style="text-align:left;height:220px;" @click="weiDetail(Item.studioStatusId, Item.title)">
+                <div style="margin: 6px 0">{{Item.title}}</div>
+                <div v-html="Item.content"></div><br>
+                <p v-if="Item.fileList.length > 0">
+                <div :key="imgIndex" v-for="(imgItem,imgIndex) in Item.fileList">
+                    <img :src="imgItem.ThumbUrl" style="width: 60%;margin-right: 2%" v-if="Item.resourceTypeId == 2">
+                    <img :src="imgItem.Url" style="width: 30%;margin-right: 2%" v-else>
+                </div>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<script>
+import { Indicator } from 'mint-ui';
+export default {
+    data() {
+        return {
+            list: [],
+            PageIndex: 0,
+            PageSize: 10,
+            init: false,
+        };
+    },
+    methods: {
+        //视频详情
+        weHealthDetail(WeHealthID) {
+            this.$router.push({ path: '/WeHealthDetail/' + WeHealthID });
+        },
+        // 取消收藏
+        cancelCollection(WeHealthID) {
+            let params = {
+                "CollectID": WeHealthID,
+                "CollectType": 9,
+                "IsCollect":  false,
+            }
+            this.api.CollectVideo(params).then( res=> {
+                if(res.Result == 1) {
+                    for(let i=0;i<this.list.length;i++) {
+                        if(WeHealthID == this.list[i].studioStatusId) {
+                            this.list.splice(i, 1);
+                        }
+                    }
+                } else {
+                    Toast("取消收藏失败，请稍后再试！");
+                }
+            });
+        },
+        //进入微健康详情
+        weiDetail(event, shareTitle) {
+            shareTitle = shareTitle ? shareTitle : '微健康详情';
+            this.$router.push({ path: '/WeHealthDetail/' + event + '/' + shareTitle})
+        },
+        loadData(initLoad) {
+            let userInfo = JSON.parse(window.localStorage.getItem("userInfo"));
+            this.PageIndex = initLoad ? 1 : this.PageIndex + 1;
+            let params = {
+              "Id": userInfo.UserId,
+              "PageIndex": this.PageIndex,
+              "PageSize": this.PageSize,
+            };
+            if (initLoad) {
+              Indicator.open();
+            }
+            this.api.getCollectWorkRoomDynamics(params).then(res => {
+                var tempData = res.Data.Data;
+                var tempList = [];
+                for(let i = 0, L = tempData.length; i < L; i++){
+                  if(tempData[i].workRoomDynamicModeId == 1) {
+                      tempList.push(tempData[i]);
+                      Indicator.close();
+                  } else {
+                    this.api.getWorkRoomDynamicById({"Id":tempData[i].studioStatusId}).then(res2 => {
+                        tempList.push(res2.Data);
+                    });
+                  }
+                }
+
+                if (initLoad) {
+                    this.list = tempList;
+                } else if (tempList && tempList.length > 0) {
+                    tempList.forEach(item => {
+                        this.list.push(item);
+                    })
+                } else {
+                    this.$emit('changeAllLoadStatus');
+                }
+                this.init = true;
+            });
+        }
+    },
+    mounted() {
+        this.loadData(true);
+    },
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../common/style.css';
+</style>

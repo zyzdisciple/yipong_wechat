@@ -1,0 +1,75 @@
+<template>
+<div>
+  <div class="users-bg3" style="height: 50px;padding:0;position: fixed;top:0px;z-index: 2;">
+    <div class="users-bg3-l">
+      <div :class='activeDoc' @click="showDocList">医生工作室</div>
+    </div>
+    <div class="users-bg3-r">
+      <div :class='activeMec' @click="showMecList">机构直播间</div>
+    </div>
+  </div>
+  <div class="LiveTalent" style="text-align:left">
+      <MyAttentionDoc v-show="showDoc"></MyAttentionDoc>
+      <MyAttentionMec v-show="showMec"></MyAttentionMec>
+  </div>
+</div>
+
+</template>
+
+<script scoped>
+import MyAttentionDoc from '@/components/User/MyAttentionDoc';
+import MyAttentionMec from '@/components/User/MyAttentionMec';
+export default {
+    components: {
+      MyAttentionDoc, MyAttentionMec,
+    },
+    data() {
+        return {
+            showMec: false,
+            showDoc: true,
+            activeDoc: "users-bg3-f is-selected",
+            activeMec: "users-bg3-f",
+        };
+    },
+
+    methods: {
+        // 医生工作室
+        showDocList() {
+            this.activeDoc = "users-bg3-f is-selected"
+            this.activeMec = "users-bg3-f"
+            this.showDoc = true
+            this.showMec = false
+        },
+        // 机构直播间
+        showMecList() {
+          this.showDoc = false
+          this.showMec = true
+          this.activeDoc = "users-bg3-f"
+          this.activeMec = "users-bg3-f is-selected"
+        },
+    },
+
+    created() {},
+    mounted() {},
+
+};
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+@import '../../common/style.css';
+.users-bg3-l {
+  text-align: -webkit-center;
+}
+.users-bg3-r {
+  text-align: -webkit-center;
+}
+.users-bg3-f {
+  font-size: 2.0rem;
+}
+.users-bg3-f.is-selected {
+    width: fit-content;
+    color: #26a2ff;
+    border-bottom: 2px solid #03a9f4;
+}
+</style>

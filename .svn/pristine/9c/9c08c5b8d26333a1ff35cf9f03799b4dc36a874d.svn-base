@@ -1,0 +1,339 @@
+<template>
+    <div id="detail">
+      <div class="page-wrap tabb">
+        <div ref="videoContent" class="video-detail-no-scroll mint-content" style="position: fixed;z-index: 999">
+            <div class="mint-content-videoxq">
+                <video-element
+                  :videoUrl = "dataInfo.CloudUrl"
+                  :poster= "dataInfo.ThumbPictureUrl"
+                  :posterImageUrl = "dataInfo.ThumbPictureUrl"
+                  :videoId = "dataInfo.Id"
+                ></video-element>
+            </div>
+        </div>
+        <div class="scroll-div"
+             :style="scrollStyle"
+             v-infinite-scroll="loadMore"
+             infinite-scroll-immediate-check="true"
+             infinite-scroll-disabled="allLoaded"
+             style="background-color: white"
+        >
+          <div class="mint-content" style="text-align:left;">
+            <div class="mint-videoxq-title">{{dataInfo.Title}}</div>
+            <div class="mint-videoxq-tab" :key="index" v-for="(item,index) in  diseaseList">{{item.Name}}</div>
+            <div class="mint-videoxq-tab" v-if="dataVideo.PushMan">{{dataVideo.PushMan}}</div>
+            <div class="mint-videoxq-content mlt10">{{dataInfo.PreviewCount}}次播放</div>
+            <div style="line-height: 30px" class="mint-videoxq-content m10" v-html="dataVideo.Content"></div>
+          </div>
+          <!--推荐视频-->
+          <div class="mint-content" style="text-align:left;padding-left:10px">
+            <div class="mint-content" style="padding-bottom:10px; font-size: 1.4rem;" v-if="tuiList.length > 0">为你推荐
+            </div>
+             <div class="video-tj-list" @click="recommendVideo(item.Id, item.Titile)" :key="index" v-for="(item,index) in  tuiList">
+                 <div class="video-tj-listr">
+                     <span class="font1421">{{item.Titile}}</span>
+                         <span class="video-tj-listr1 font1421 b3">{{item.Hospital}}</span>
+                 </div>
+                 <div class="video-tj-listl"><img :src="item.ThumbPictureUrl" style="height:70px"></div>
+             </div>
+          </div>
+          <!-- 评论-->
+          <div class="mint-content" style="text-align: left;padding:5px 10px;font-size: 1.3rem;background-color: #eee">
+            评论
+          </div>
+          <div class="mint-content" style="text-align:left;padding-left:10px" v-if="list.length > 0">
+            <ul>
+              <li :key="index" v-for="(item,index) in list">
+                <div class="pl">
+                  <div class="pinglun-tx" style="height:42px">
+                      <img style="border-radius:42px" :src="item.commenterHeaderImgUrl" v-if="item.commenterHeaderImgUrl != null">
+                      <img style="border-radius:42px" src="../../assets/default_avatar.png" v-else>
+                  </div>
+                  <div class="pinglun-tab">
+                      <div class="pl-title">{{item.commenter}}</div>
+                    <div class="pinglun-dz">
+                          <img @click="cancelPraise(item.Id, index)" src="../../images/dz-1.png" v-if="item.isPraise">
+                          <img @click="enterPraise(item.Id, index)" src="../../images/dz-2.png" v-else>
+                        <span class="pl-dz-num">{{item.customerPraiseCount}}</span>
+                      </div>
+                  </div>
+                  <div class="pinglun-zw" @click="replayComment(item.Id)">
+                      <div class="mb5" style="width:100%;word-break: break-all; word-wrap:break-word;">{{item.commentContent}}</div>
+                      <div class="hftime">{{item.commentDateTime}}&nbsp;&nbsp;&nbsp;&nbsp;</div><div class="hfcs">{{item.replyCount}}回复</div>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div v-else>
+            <div class="no-comment-div" style="padding: 20px 0px;">
+              <img style="width: 85px;" src="../../images/no-comment.png">
+              <div style="font-size: 1.3rem;color: #757575;">等待你的评论, 快来抢沙发!</div>
+            </div>
+          </div>
+        </div>
+        <div class="mint-tabbar video-detail-no-scroll is-fixed">
+          <div class="plbar-1" style="width: 70%">
+              <div class="pl-input">
+                  <form @submit.prevent="submit">
+                      <input v-model="comments" class="pl-input1"><img src="../../images/pl-bj.png" class="pl-bj"><input type="submit" class="pl-input2"></input>
+                  </form>
+              </div>
+          </div>
+          <div class="plbar-2" style="width: 30%">
+            <img class="mr20" style="margin-right: 10px" @click="videoThank" src="../../images/pl-zx.png">
+            <img class="mr20" style="margin-right: 10px" @click="cancelCollection" src="../../images/pl-sc-1.png" v-if="collect">
+            <img class="mr20" style="margin-right: 10px" @click="enterCollection" src="../../images/pl-sc-0.png" v-else>
+            <!--<img  src="../../images/pl-fx.png">-->
+          </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+ <script scoped>
+import { Toast,Loadmore  } from 'mint-ui';
+import * as constant from '../../configs/constant';
+import VideoElement from './VideoElement';
+
+export default {
+    components: {
+        VideoElement,
+    },
+    data() {
+        return{
+            dataInfo: Object,
+            list: [],
+            comments: "",
+            dataVideo: Object,
+            diseaseList: [],
+            tuiList: [],
+            collect: "",
+            isStop: false,
+            pageIndex: 1,
+            hasNextPage: true,
+            allLoaded: false,
+            scrollStyle: {},
+            noScrollDom: null,
+        }
+    },
+    computed: {
+    },
+    updated() {
+        if (!this.noScrollDom) {
+            this.changeFixTop();
+        }
+    },
+    props: {
+        index: Number,
+    },
+    methods: {
+        changeFixTop() {
+            this.scrollStyle = {
+              top: "",
+              height: "",
+            }
+            let height = 0;
+            this.noScrollDom = true;
+            height +=  document.documentElement.clientWidth * 9 / 16;
+            this.scrollStyle.top = height + 'px';
+            height += 55;
+            this.scrollStyle.height = document.documentElement.clientHeight - height + 'px';
+        },
+        //下拉加载更多
+        loadMore() {
+            this.allLoaded = true;
+            this.loading = true;
+            setTimeout(() => {
+                if (this.hasNextPage) {
+                    this.loadComments(10);
+                }
+            }, 800);
+        },
+        //加载评论
+        loadComments(size) {
+            if (!this.hasNextPage) {
+                return;
+            }
+            size = size < 5 ? 5 : size;
+            let params ={
+                "CommentsID": this.$route.params.VideoID,
+                "CommentsType": 2,
+                "PageIndex": this.pageIndex,
+                "PageSize": size
+            }
+            // 评论
+            this.api.getVideoNoteList(params).then(res => {
+                var tempList = res.Data.Data;
+                this.hasNextPage = res.Data.HasNextPage;
+                tempList.forEach(item => {
+                    this.list.push(item);
+                })
+                this.pageIndex++;
+
+                this.allLoaded = this.hasNextPage ? false : true;
+            });
+        },
+        // 推荐视频详情
+        recommendVideo(event, title) {
+            this.$router.push({ path: '/VideoDetail/' + event + "/"+ title})
+        },
+        // 评论点赞、取消点赞
+        enterPraise(PraiseID, index) {
+          let likeParam = {
+            "PraiseID": PraiseID,
+            "PraiseType": 11,
+            "IsPraise": true,
+          };
+          this.api.PariseVideo(likeParam).then( res=> {
+            // 点赞成功
+            let item = this.list[index];
+            if(res.Result == 1) {
+                item.isPraise = true;
+                item.customerPraiseCount = res.Data.praiseCount;
+                this.list.splice(index, 1, item);
+            } else {
+                Toast(res.ResultMessage);
+            }
+          });
+        },
+        cancelPraise(PraiseID, index) {
+          let likeParam = {
+            "PraiseID": PraiseID,
+            "PraiseType": 11,
+            "IsPraise": false,
+          };
+          this.api.PariseVideo(likeParam).then( res=> {
+            let item = this.list[index];
+            if(res.Result == 1) {
+              item.isPraise = false;
+              item.customerPraiseCount = res.Data.praiseCount;
+              this.list.splice(index, 1, item);
+            } else {
+              Toast(res.ResultMessage);
+            }
+          });
+        },
+        // 评论视频
+        submit: function(event) {
+            if (this.comments.trim() == '') {
+                Toast("内容不能为空");
+                this.comments = '';
+                return false;
+            }
+            let commonParams = {
+                "CommentsID": this.$route.params.VideoID,
+                "CommentsType": 2,
+                "ReplyID": 0,
+                "CommentContent": this.comments,
+            }
+            this.api.releaseReplyVideo(commonParams).then( res => {
+                if(res.Result == 1) {
+                    Toast("发表评论成功！");
+                    this.pageIndex = 1;
+                    this.hasNextPage = true;
+                    this.allLoaded = false;
+                    this.list = [];
+                    this.loadComments(10);
+                    this.comments = '';
+                } else {
+                    Toast("评论失败，请稍后再试");
+                }
+            });
+        },
+        // 收藏视频
+        enterCollection() {
+            let params = {
+                "CollectID": this.$route.params.VideoID,
+                "CollectType": 2,
+                "IsCollect":  true,
+            }
+            this.api.CollectVideo(params).then(res => {
+                // 收藏成功
+                if(res.Result == 1) {
+                  Toast("收藏成功！");
+                  this.collect = true;
+                } else {
+                  Toast("收藏失败，请稍后再试！");
+                }
+            });
+        },
+        cancelCollection() {
+          let params = {
+            "CollectID": this.$route.params.VideoID,
+            "CollectType": 2,
+            "IsCollect":  false,
+          }
+          this.api.CollectVideo(params).then(res => {
+            // 收藏成功
+            if(res.Result == 1) {
+              Toast("取消收藏！");
+              this.collect = false;
+            } else {
+              Toast("取消收藏失败，请稍后再试！");
+            }
+          });
+        },
+        // 视频致谢
+        videoThank() {
+            this.$router.push({ path: '/pay/CustomerAdmire/' + this.$route.params.VideoID +"/2101" });
+        },
+      replayComment(commentId) {
+        this.$router.push({path: '/ReplayComment/video/' + commentId + '/' + this.dataInfo.Id});
+      }
+    },
+    mounted() {
+        let params = {
+            "DetailID": this.$route.params.VideoID,
+            "DetailType": 2
+        }
+        let infoParams = {
+            "VideoId": this.$route.params.VideoID,
+        }
+        this.loadComments(10);
+
+        // 根据ID获取视频详情
+        this.api.getVideoDetail(params).then(res => {
+          this.dataInfo = res.Data;
+          this.collect = this.dataInfo.IsCollect;
+          this.$store.state.shareData.imgUrl = res.Data.ThumbPictureUrl;
+          this.$store.state.shareData.title = res.Data.Title;
+        });
+        // 视频简介详情
+        this.api.getVideoInfo(infoParams).then(res => {
+            this.dataVideo = res.Data;
+            this.diseaseList = res.Data.DiseaseList;
+            var temp = res.Data.Content;
+            if (temp) {
+                temp = temp.replace(/<p>|<\/p>/g, " ");
+            }
+            this.$store.state.shareData.description = temp;
+        });
+        // 推荐视频
+        let commendParams = {
+            "VideoId": this.$route.params.VideoID,
+        }
+        this.api.recommendVideoList(commendParams).then(res => {
+            this.tuiList = res.Data;
+        });
+    },
+    computed: {
+    },
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss" >
+@import '../../common/style.css';
+.scroll-div {
+  position: fixed;
+  width: 100%;
+  overflow: scroll;
+}
+
+.mint-videoxq-title {
+  margin-top: 0;
+  word-break: break-all;
+  margin-left: 10px;
+}
+</style>

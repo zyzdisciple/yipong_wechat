@@ -1,0 +1,274 @@
+<template>
+  <div class="page-infinite-wrapper" ref="wrapper" :style="{ height: wrapperHeight + 'px' }">
+    <div>
+      <div ref="videoSearch" class="liveSearch">
+        <div class="mint-searchbar">
+          <div style="width:100%">
+            <div class="mint-searchbar-inner">
+              <i class="mintui mintui-search" style="margin-top:3px"></i>
+              <form action="">
+                <input type="search" v-model="searchContent" placeholder="请输入关键字搜索视频" class="mint-searchbar-core"
+                       @keyup.enter="searchLiveList" style="margin-left:2px;font-size: 1.4rem;">
+                <input class="just-for-no-refresh" type="text" style="display:none"/>
+              </form>
+            </div>
+            <a class="mint-searchbar-cancel" style="display: none;">取消</a>
+          </div>
+        </div>
+      </div>
+      <div class="liveList" v-if="liveList.length > 0" :style="scrollStyle" v-infinite-scroll="loadMore"
+           infinite-scroll-disabled="loading" infinite-scroll-immediate-check="false" infinite-scroll-distance="50">
+        <div class="live-content" :key="liveIndex" v-for="(liveItem,liveIndex) in liveList">
+          <div class="zbyg-list" @click="LiveDetail(liveItem.Id, liveItem.Title)">
+            <div class="zbyg-list-l">
+              <img :src="liveItem.Picture.Url">
+            </div>
+            <div class="zbyg-list-c">
+                <span class="zbygbt">
+                  {{liveItem.Title}}
+                </span><br>
+              <span class="zbygsbt">
+                  <img src="../../images/zbyg-time.png">{{liveItem.RealStartDateTime}}
+                </span><br/>
+              <span class="zbygsbt zbygsbt-2">
+                  <img src="../../images/zbyg-user.png">
+                  {{liveItem.WorkRoom.Name}}
+                </span>
+            </div>
+            <div class="zbyg-list-r" v-if="liveItem.LiveStreamStateId == 1">
+              <button style="min-width:60px;" class="button-danger">直播</button>
+            </div>
+            <div class="zbyg-list-r" v-else>
+              <button class="button-primary" style="min-width:60px;" v-if="liveItem.LiveStreamVideoExpense > 0">付费回看
+              </button>
+              <button class="button-primary" style="min-width:60px;" v-else>回看</button>
+            </div>
+          </div>
+        </div>
+        <div v-show="loading" style="width: 100%" class="page-infinite-loading">
+          <mt-spinner type="fading-circle"></mt-spinner>
+          加载中...
+        </div>
+        <div v-show="LastPage" style="width: 100%;text-align: center" class="page-infinite-loading">
+          没有更多数据了
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+  import LiveItem from '@/components/livelist/LiveItem';
+  import Modal from '@/components/modal/Modal';
+  import ModalLogin from '@/components/modal/ModalLogin';
+  import {getStore, removeStore} from '../../store/mlocalstorge';
+  import {Toast} from 'mint-ui';
+  import * as constant from '../../configs/constant';
+  import {getWXPayInfo} from '../../utils/WXPay';
+  export default {
+    components: {
+      LiveItem, Modal, ModalLogin
+    },
+    data() {
+      return {
+        list: Object,
+        title: "",
+        PageIndex: 1,
+        PageSize: 10,
+        text: "",
+        userInfo: {},
+        ScoreSetting: 0,
+        wrapperHeight: document.documentElement.clientHeight,
+        itemindex: -1,
+        liveList: [],
+        searchContent: "",
+        loading: false,
+        loadStatus: false,
+        LastPage: false,
+        noScrollDom: false,
+        scrollStyle: {
+          top: null,
+          height: null,
+        },
+      }
+    },
+    props: {
+      type: Number,
+      isSelf: Boolean,
+      UserId: Number,
+
+    },
+    mounted() {
+      this.$store.state.shareData.title = "医邦直播";
+      this.$store.state.shareData.description = "直播视频";
+      let createUserId = -1;
+      let statusId = 4;
+      if (this.$route.params.StudioID > 0) {
+        createUserId = this.$route.params.StudioID;
+        statusId = 2;
+      }
+      let params = {
+        "PageIndex": this.PageIndex,
+        "PageSize": this.PageSize,
+        "StatusId": statusId,
+        "OrderMode": 1,
+        "Keywords": this.searchContent,
+        "Userid": createUserId,
+      }
+      this.api.getLiveStreams(params).then(res => {
+        this.liveList = res.Data.Data;
+      });
+    },
+    updated() {
+      if (!this.noScrollDom) {
+        this.changeFixTop();
+      }
+    },
+    methods: {
+      changeFixTop() {
+        let tempDom = this.$refs.videoSearch;
+        let height = tempDom.offsetHeight + tempDom.style.marginTop.replace("px", "") / 1 + tempDom.style.marginBottom.replace("px", "") / 1;
+        this.noScrollDom = true;
+        this.scrollStyle = {
+          height: this.wrapperHeight - height + 'px',
+          top: '52px',
+        }
+      },
+      // 加载更多
+      loadMore() {
+        this.loading = true;
+        this.loadStatus = true;
+        this.PageIndex++;
+        setTimeout(() => {
+          let createUserId = -1;
+          let statusId = 4;
+          if (this.$route.params.StudioID > 0) {
+            createUserId = this.$route.params.StudioID;
+            statusId = 2;
+          }
+          let params = {
+            "Userid": createUserId,
+            "PageIndex": this.PageIndex,
+            "PageSize": this.PageSize,
+            "StatusId": statusId,
+            "OrderMode": 1,
+            "Keywords": this.searchContent,
+          }
+
+          this.api.getLiveStreams(params).then(res => {
+            if (this.PageIndex >= res.Data.TotalPages) {
+              this.changeLoadStatus(true);
+            } else {
+              this.changeLoadStatus(false);
+            }
+            for (let i = 0; i < res.Data.Data.length; i++) {
+              this.liveList.push(res.Data.Data[i]);
+            }
+          });
+        }, 800);
+      },
+      changeLoadStatus(status) {
+        if (status) {
+          this.loadStatus = true;
+          this.LastPage = true;
+        } else {
+          this.loadStatus = false;
+        }
+        this.loading = false;
+      },
+      // 搜索直播
+      searchLiveList() {
+        this.PageIndex = 1;
+        this.loadStatus = false;
+        this.LastPage = false;
+        let createUserId = -1;
+        let statusId = 4;
+        if (this.$route.params.StudioID > 0) {
+          createUserId = this.$route.params.StudioID;
+          statusId = 2;
+        }
+        let params = {
+          "KeyWords": this.searchContent,
+          "UserId": createUserId,
+          "StatusId": statusId,
+          "OrderMode": 1,
+          "PageIndex": this.PageIndex,
+          "PageSize": this.PageSize,
+        }
+
+        this.api.getLiveStreams(params).then(res => {
+          this.liveList = res.Data.Data;
+        });
+      },
+      getStatus (urlStr) {
+        var urlStrArr = urlStr.split('/');
+        return urlStrArr[urlStrArr.length - 1];
+      },
+      LiveDetail(event, shareTitle) {
+        shareTitle = shareTitle ? shareTitle : '直播详情';
+        this.$router.push({path: '/LiveDetail/' + event + '/' + shareTitle})
+      },
+      more() {
+        this.$emit("more")
+      },
+      itemclick(itemindex) {
+      },
+      cancleClick() {
+      },
+      confirmCharge() {
+      }
+    },
+    beforeDestroy() {
+      this.$store.state.shareData.title = "";
+      this.$store.state.shareData.description = "";
+    },
+
+  }
+</script>
+<style scoped lang="scss">
+  @import '../../common/style.css';
+
+  .liveSearch {
+    position: fixed;
+    top: 0px;
+    width: 100%;
+    z-index: 2;
+    height: 52px;
+  }
+
+  .liveList {
+    position: fixed;
+    width: 100%;
+    overflow: scroll;
+  }
+
+  .live-content {
+    .zbyg-list {
+      .zbyg-list-l {
+        width: 100px;
+        img {
+          width: 80px;
+          height: 60px;
+        }
+      }
+      .zbyg-list-c {
+        width: calc(100% - 190px);
+        text-align: left;
+        margin: 12px 2px 0 2px;
+        .zbygbt:first-child {
+          width: 100%;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+        }
+
+        .zbygsbt-2 {
+          width: 100%;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+          margin-top: 3px;
+        }
+      }
+    }
+  }
+</style>

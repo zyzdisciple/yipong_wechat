@@ -1,0 +1,486 @@
+<template>
+  <div class="MyAdvisory">
+    <div class="mint-navbar page-part" style="margin-bottom: 0;position:fixed;width: 100%;height: 50px;z-index:2000">
+      <a @click="showOnline" :class="onlineClass" style="padding: 12px 0">
+        <div class="mint-tab-item-label">
+          在线咨询
+        </div>
+      </a>
+      <a @click="showRehabilitation" :class="rehabilitationClass" style="padding: 12px 0">
+        <div class="mint-tab-item-label">
+          康复指导
+        </div>
+      </a>
+      <a href="http://weixin.yipong.com/DownLoad/index.html" class="mint-tab-item" style="padding: 12px 0">
+        <div class="mint-tab-item-label">
+          视频咨询
+        </div>
+      </a>
+    </div>
+    <div v-show="onlineContent" class="mint-tab-container">
+      <div class="mint-tab-container-wrap">
+        <div class="mint-tab-container-item">
+          <div v-if="consultsList.length > 0"
+               class="live-talent" :style="scrollStyle"
+               infinite-scroll-immediate-check="false"
+               v-infinite-scroll="onlineLoadMore"
+               infinite-scroll-disabled="onlineLoading"
+               infinite-scroll-distance="50"
+          >
+            <a :key="Index" v-for="(Item,Index) in consultsList">
+              <div class="gzs-rdzx" style="height:130px">
+                <div
+                  @click="advisoryDetail(Item.Id, Item.WorkRoomId, Item.OnlineConsultStatus, Item.IsPaid, Item.DoctorNetEasyId)"
+                  class="gzs-rdzxc" style="text-align:left;width: 90%">
+                  <div class="gzs-rdzxc-title">
+                    {{Item.Title}}
+                    <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right"
+                         v-if="Item.OnlineConsultStatus == 2">已结束
+                    </div>
+                    <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right"
+                         v-if="Item.OnlineConsultStatus == 1">咨询中
+                    </div>
+                    <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right"
+                         v-if="Item.OnlineConsultStatus == 0">
+                      <div v-if="!Item.IsPaid">待付款</div>
+                      <div v-if="Item.IsPaid">待回答</div>
+                    </div>
+                  </div>
+                  <div class="gzs-rdzxc-user">
+                    <img src="../../images/gzs-user.png">咨询医生：{{Item.WorkRoomCustomerRealName}}
+                  </div>
+                  <div class="gzs-rdzxc-user">
+                    <img src="../../images/gzs-time.png">咨询时间：{{Item.CreatedOnUtc}}
+                  </div>
+                  <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time"
+                       v-if="Item.OnlineConsultStatus == 2">
+                    <button @click.stop="consultEvaluate(Item.Id, Item.WorkRoomId, Item.ConsultTypeId)"
+                            style="height: 20px;width: 80px;"
+                            class="mint-button mint-button--default mint-button--small"
+                            v-if="!Item.IsEvaluated && Item.IsPaid">
+                      评价
+                    </button>
+                    <button @click.stop="studioDetail(Item.WorkRoomId)" style="height: 20px;width: 80px;"
+                            class="mint-button mint-button--default mint-button--small">
+                      再次咨询
+                    </button>
+                  </div>
+                  <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time"
+                       v-if="Item.OnlineConsultStatus == 0">
+                    <div v-if="!Item.IsPaid">
+                      <button @click.stop="deleteconsults(Item.Id)" style="height: 20px;width: 80px;"
+                              class="mint-button mint-button--default mint-button--small">
+                        删除
+                      </button>
+                      <button @click.stop="payment(Item.Expense, Item.ConsultTypeId, Item.Id, Item.CustomerId)"
+                              style="height: 20px;width: 80px;"
+                              class="mint-button mint-button--default mint-button--small">
+                        支付
+                      </button>
+                    </div>
+                    <div v-if="Item.IsPaid">
+                      <button @click.stop="changeSatus(Item.Id)" style="height: 20px;width: 80px;"
+                              class="mint-button mint-button--default mint-button--small">
+                        结束咨询
+                      </button>
+                    </div>
+                  </div>
+                  <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time"
+                       v-if="Item.OnlineConsultStatus == 1">
+                    <button @click="changeSatus(Item.Id)" style="height: 20px;width: 80px;"
+                            class="mint-button mint-button--default mint-button--small">
+                      结束咨询
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-show="rehabilitationContent" class="mint-tab-container">
+      <div class="mint-tab-container-wrap">
+        <div class="mint-tab-container-item">
+          <div v-if="rehabilitationList.length > 0"
+               class="live-talent" :style="scrollStyle"
+               infinite-scroll-immediate-check="false"
+               v-infinite-scroll="guideLoadMore"
+               infinite-scroll-disabled="guideLoading"
+               infinite-scroll-distance="50"
+          >
+            <a :key="Index" v-for="(Item,Index) in rehabilitationList">
+              <div class="gzs-rdzx" style="height:130px">
+                <div
+                  @click="advisoryDetail(Item.Id, Item.WorkRoomId, Item.OnlineConsultStatus, Item.IsPaid, Item.DoctorNetEasyId)"
+                  class="gzs-rdzxc" style="text-align:left;width: 90%">
+                  <div class="gzs-rdzxc-title">
+                    {{Item.Title}}
+                    <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right"
+                         v-if="Item.OnlineConsultStatus == 2">已结束
+                    </div>
+                    <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right"
+                         v-if="Item.OnlineConsultStatus == 1">咨询中
+                    </div>
+                    <div class="gzs-rdzxc-title-r" style="color: #ff9577;float:right"
+                         v-if="Item.OnlineConsultStatus == 0">
+                      <div v-if="!Item.IsPaid">待付款</div>
+                      <div v-if="Item.IsPaid">待回答</div>
+                    </div>
+                  </div>
+                  <div class="gzs-rdzxc-user">
+                    <img src="../../images/gzs-user.png">咨询医生：{{Item.WorkRoomCustomerRealName}}
+                  </div>
+                  <div class="gzs-rdzxc-user">
+                    <img src="../../images/gzs-time.png">咨询时间：{{Item.CreatedOnUtc}}
+                  </div>
+                  <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time"
+                       v-if="Item.OnlineConsultStatus == 2">
+                    <button @click.stop="consultEvaluate(Item.Id, Item.WorkRoomId, Item.ConsultTypeId)"
+                            style="height: 20px;width: 80px;"
+                            class="mint-button mint-button--default mint-button--small"
+                            v-if="!Item.IsEvaluated && Item.IsPaid">
+                      评价
+                    </button>
+                    <button @click.stop="studioDetail(Item.WorkRoomId)" style="height: 20px;width: 80px;"
+                            class="mint-button mint-button--default mint-button--small">
+                      再次咨询
+                    </button>
+                  </div>
+                  <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time"
+                       v-if="Item.OnlineConsultStatus == 0">
+                    <div v-if="!Item.IsPaid">
+                      <button @click.stop="deleteconsults(Item.Id)" style="height: 20px;width: 80px;"
+                              class="mint-button mint-button--default mint-button--small">
+                        删除
+                      </button>
+                      <button @click.stop="payment(Item.Expense, Item.ConsultTypeId, Item.Id, Item.CustomerId)"
+                              style="height: 20px;width: 80px;"
+                              class="mint-button mint-button--default mint-button--small">
+                        支付
+                      </button>
+                    </div>
+                    <div v-if="Item.IsPaid">
+                      <button @click.stop="changeSatus(Item.Id)" style="height: 20px;width: 80px;"
+                              class="mint-button mint-button--default mint-button--small">
+                        结束咨询
+                      </button>
+                    </div>
+                  </div>
+                  <div style="text-align: right;padding-right: 5%;width:90%" class="gzs-rdzxc-time"
+                       v-if="Item.OnlineConsultStatus == 1">
+                    <button @click="changeSatus(Item.Id)" style="height: 20px;width: 80px;"
+                            class="mint-button mint-button--default mint-button--small">
+                      结束咨询
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <mt-popup
+      v-model="popupVisible"
+      v-if="showConsultEvaluate"
+    >
+      <ConsultEvaluate
+        :consultId="currentId"
+        :workRoomId="currentWorkRoomId"
+        :consultTypeId="2105"
+        @change-modal="changeModal"
+      >
+
+      </ConsultEvaluate>
+    </mt-popup>
+    <p v-show="loadPage" class="page-infinite-loading">
+      <mt-spinner type="fading-circle"></mt-spinner>
+      加载中...
+    </p>
+  </div>
+</template>
+
+<script>
+  import {MessageBox} from 'mint-ui';
+  import {Toast} from 'mint-ui';
+  import ConsultEvaluate from './ConsultEvaluate'
+
+  import {Indicator} from 'mint-ui';
+
+  var timeInterval;
+  export default {
+    components: {
+      ConsultEvaluate
+    },
+    data() {
+      return {
+        onlineClass: "mint-tab-item is-selected",
+        rehabilitationClass: "mint-tab-item",
+        onlineContent: true,
+        rehabilitationContent: false,
+        Data: 0,
+        consultsList: [],
+        rehabilitationList: [],
+        selected: '1',
+        showConsultEvaluate: false,
+        popupVisible: false,
+        currentId: '',
+        currentWorkRoomId: '',
+        consultTypeId: '',
+        guideLoading: false,
+        onlineLoading: false,
+        PageSize: 10,
+        guidePageIndex: 1,
+        onlinePageIndex: 1,
+        loadPage: false,
+        scrollStyle: {
+          top: '50px',
+          height: document.documentElement.clientHeight - 50 + 'px'
+        },
+      };
+    },
+    mounted() {
+      // 咨询记录
+      let userinfo = window.localStorage.getItem("userInfo");
+      userinfo = JSON.parse(userinfo);
+      let onlineParams = {
+        "ConsultTypeId": 1,
+        "StatusId": -1,
+        "Title": "",
+        "WorkRoomId": -1,
+        "CustomerHealthyRecordId": -1,
+        "CustomerId": userinfo.UserId,
+        "PageIndex": this.onlinePageIndex,
+        "PageSize": this.PageSize,
+      };
+      let rehabilitationParams = {
+        "ConsultTypeId": 2,
+        "StatusId": -1,
+        "Title": "",
+        "WorkRoomId": -1,
+        "CustomerHealthyRecordId": -1,
+        "CustomerId": userinfo.UserId,
+        "PageIndex": this.guidePageIndex,
+        "PageSize": this.PageSize,
+      };
+      this.api.getHotOnline(rehabilitationParams).then(res => {
+        this.rehabilitationList = res.Data.Data;
+        if (res.Data.HasNextPage) {
+          this.onlineLoading = false;
+        } else {
+          this.onlineLoading = true;
+        }
+      });
+      this.api.getHotOnline(onlineParams).then(res => {
+        this.consultsList = res.Data.Data;
+        if (res.Data.HasNextPage) {
+          this.guideLoading = false;
+        } else {
+          this.guideLoading = true;
+        }
+      });
+    },
+    methods: {
+      // 加载更多
+      guideLoadMore() {
+        this.guideLoading = true;
+        this.loadPage = true;
+        setTimeout(() => {
+          this.guidePageIndex++;
+          let userinfo = window.localStorage.getItem("userInfo");
+          userinfo = JSON.parse(userinfo);
+          let scrollGuide = {
+            "ConsultTypeId": 2,
+            "StatusId": -1,
+            "Title": "",
+            "WorkRoomId": -1,
+            "CustomerHealthyRecordId": -1,
+            "CustomerId": userinfo.UserId,
+            "PageIndex": this.guidePageIndex,
+            "PageSize": this.PageSize,
+          };
+          this.api.getHotOnline(scrollGuide).then(res => {
+            for (let i = 0; i < res.Data.Data.length; i++) {
+              this.rehabilitationList.push(res.Data.Data[i]);
+            }
+            this.loadPage = false;
+            if (res.Data.HasNextPage) {
+              this.guideLoading = false;
+            } else {
+              this.guideLoading = true;
+            }
+          });
+        }, 2500);
+      },
+      onlineLoadMore() {
+        this.onlineLoading = true;
+        this.loadPage = true;
+        setTimeout(() => {
+          this.onlinePageIndex++;
+          let userinfo = window.localStorage.getItem("userInfo");
+          userinfo = JSON.parse(userinfo);
+          let scrollOnline = {
+            "ConsultTypeId": 1,
+            "StatusId": -1,
+            "Title": "",
+            "WorkRoomId": -1,
+            "CustomerHealthyRecordId": -1,
+            "CustomerId": userinfo.UserId,
+            "PageIndex": this.onlinePageIndex,
+            "PageSize": this.PageSize,
+          };
+          this.api.getHotOnline(scrollOnline).then(res => {
+            for (let i = 0; i < res.Data.Data.length; i++) {
+              this.consultsList.push(res.Data.Data[i]);
+            }
+            this.loadPage = false;
+            if (res.Data.HasNextPage) {
+              this.onlineLoading = false;
+            } else {
+              this.onlineLoading = true;
+            }
+          });
+        }, 2500);
+      },
+      changeModal: function (childValue) {
+        this.popupVisible = childValue;
+      },
+      // 在线咨询显示
+      showOnline() {
+        this.onlineClass = "mint-tab-item is-selected";
+        this.rehabilitationClass = "mint-tab-item";
+        this.onlineContent = true;
+        this.rehabilitationContent = false;
+      },
+      showRehabilitation() {
+        this.rehabilitationClass = "mint-tab-item is-selected";
+        this.onlineClass = "mint-tab-item";
+        this.onlineContent = false;
+        this.rehabilitationContent = true;
+      },
+      // 删除在线咨询
+      deleteconsults(consultsID) {
+        MessageBox.confirm('确定删除该咨询吗?', '提示').then(action => {
+          this.api.deleteCustomerOnlineConsult({"Id": consultsID}).then(res => {
+            if (res.Data) {
+              Toast("删除成功！");
+              for (var i = 0, L = this.consultsList.length; i < L; i++) {
+                if (this.consultsList[i].Id == consultsID) {
+                  this.consultsList.splice(i, 1);
+                }
+              }
+            } else {
+              Toast("删除失败，请稍后再试！");
+            }
+          });
+        });
+      },
+      // 详咨询情
+      advisoryDetail(advisoryID, workRoomId, onlineConsultStatus, isPaid, doctorId) {
+        if (onlineConsultStatus != 1 && !isPaid) {
+          if (onlineConsultStatus == 2) {
+            Toast("您的咨询由于长时间未支付，系统已自动关闭，请重新创建！");
+          } else {
+            Toast("您的咨询还未付款！");
+          }
+        } else {
+          //进入详情
+          this.connectNim();
+          Indicator.open();
+          timeInterval = setInterval(() => {
+            if (this.$store.state.hasConnected) {
+              Indicator.close();
+              clearInterval(timeInterval);
+              if (onlineConsultStatus == 2) {
+                this.$router.push({path: '/chat/chatInfo/' + advisoryID + '/' + workRoomId});
+              } else if (onlineConsultStatus == 1 || onlineConsultStatus == 0) {
+                this.$router.push({path: '/chat/continueChat/' + advisoryID + '/p2p-' + doctorId});
+              }
+            }
+          }, 1000)
+        }
+      },
+      connectNim() {
+        let userInfo = JSON.parse(window.localStorage.getItem("userInfo"));
+        var params = {
+          uid: userInfo.YunXinUserName,
+          sdktoken: userInfo.YunXinToken,
+          nick: userInfo.Nickname,
+          avatar: userInfo.UserHeaderImageUrl
+        }
+        this.$store.dispatch('connect', params);
+        this.$store.dispatch('updateRefreshState');
+      },
+      // 支付咨询
+      payment(amount, consultTypeId, referToId, customerId) {
+        if (consultTypeId == '1') {
+          consultTypeId = '2308';
+        } else if (consultTypeId == '2') {
+          consultTypeId = '2311'
+        } else if (consultTypeId == '3') {
+          consultTypeId = ' 2312'
+        }
+        var pageParams = {
+          amount: amount,
+          funcName: 'myAdvisory',
+          changeTypeId: consultTypeId,
+          paymentTypeId: '902',
+          reforToTypeId: '0',
+          referToId: referToId,
+          customerId: customerId
+        };
+        this.$router.push({name: '直接支付', query: pageParams});
+      },
+      // 结束咨询
+      changeSatus(zzID) {
+        // 更改咨询状态
+        let params = {
+          "StateId": 2,
+          "Id": zzID,
+        }
+        this.api.updateCustomerOnlineConsultState(params).then(res => {
+          if (res.Data) {
+            Toast("已结束！");
+            location.reload();
+          } else {
+            Toast("操作失败，请稍后再试！");
+          }
+        });
+      },
+      //咨询评价
+      consultEvaluate(id, workRoomId, consultTypeId) {
+        this.currentId = id;
+        this.currentWorkRoomId = workRoomId;
+        this.showConsultEvaluate = true;
+        this.popupVisible = true;
+        this.consultTypeId = consultTypeId;
+      },
+      // 医生工作室详情
+      studioDetail(StudioID) {
+        this.api.getStudioDetail({id: StudioID}).then(res => {
+          this.$router.push({path: '/StudioDetail/' + StudioID + '/' + res.Data.Name});
+        })
+
+      },
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+  @import '../../common/style.css';
+
+  .MyAdvisory .mint-popup {
+    height: 100%;
+    position: fixed;
+    top: 60%;
+    width: 100%;
+  }
+
+  .live-talent {
+    text-align: left;
+    position: fixed;
+    width: 100%;
+    overflow: scroll;
+  }
+</style>

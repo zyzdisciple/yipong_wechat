@@ -1,0 +1,153 @@
+// The Vue build version to load with the `import` command
+// (runtime-only or standalone) has been set in webpack.base.conf with an alias.
+import Vue from "vue";
+import App from "./App";
+import Mint from "mint-ui";
+import "mint-ui/lib/style.css";
+import router from "./router";
+import VueTouch from "./plugins/touchEvent";
+import "./common/index.scss";
+import api from "./service/api";
+import VWechatAuth from "v-wechat-auth";
+import VueScroller from "vue-scroller";
+import * as constant from "./configs/constant";
+import store from "./store";
+import utils from "./utils"
+
+Vue.use(VueScroller)
+Vue.use(VueTouch)
+Vue.use(Mint);
+Vue.use(VWechatAuth)
+Vue.config.productionTip = false
+Vue.prototype.api = api;
+Vue.prototype.utils = utils;
+Vue.use(require('vue-wechat-title'));
+Vue.use(constant);
+/* eslint-disable no-new */
+//判断是第几次进入
+sessionStorage.getItem("isFirst") ? "" : sessionStorage.setItem("isFirst", true);
+//监听分享
+let currentUrl = window.location.href;
+if (currentUrl.indexOf("?url=") != -1) {
+  var redirectUrl = currentUrl.split("?url=")[0] + '#' + currentUrl.split("?url=")[1].split("&")[0];
+  currentUrl = redirectUrl.replace(/(\/#){2,}/g, "/?#");
+  location.href = redirectUrl;
+} else if (currentUrl.match(/(\/#){2,}/g)) {
+  currentUrl = currentUrl.replace(/(\/#){2,}/g, "/?#");
+  location.href = currentUrl;
+} else {
+  let getUrlStr = function (name) {
+    var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)')
+    var r = window.location.search.substr(1).match(reg)
+    if (r != null) return unescape(r[2])
+    return null
+  }
+  let code = getUrlStr('code');
+  //设置code码
+  window.localStorage.setItem("currentCode", code);
+  new Vue({
+    el: '#app',
+    router,
+    store,
+    template: '<App/>',
+    components: {App},
+    //初始化实例对象的时候就会执行.
+    // onOpen:
+    wechatAuth: new VWechatAuth({
+        appId: constant.appid,
+        scope: 'snsapi_userinfo',
+        authorize () {
+          let data = {};
+          if (store.state.reloadUserInfo) {
+            //在获取之后, 无论什么状态都重置为false, 重新获取code, 调用接口 获取信息
+            store.state.reloadUserInfo = false;
+            let url = constant.urlhost + "?" + window.location.hash;
+            let appid = constant.appid;
+            let urlpush = encodeURIComponent(url);
+            //用来获取code码
+            location.href = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appid}&redirect_uri=${urlpush}&response_type=code&scope=snsapi_userinfo&state=STATE#wechat_redirect`
+          } else {
+            api.wechatcodelogin({
+              'code': code
+            }).then(res => {
+              //设置调用 wechatCodelogin时的code码
+              window.localStorage.setItem("inUseCode", code);
+              if (res.Data != null && res.Data.Token) {
+                store.state.isSubscribe = res.Data.Subscribe;
+                window.localStorage.setItem('userInfo', JSON.stringify(res.Data));
+                window.localStorage.setItem('token', JSON.stringify(res.Data.Token));
+                // store.state.payAttention = !res.Data.Subscribe;
+                //更新用户信息的头像信息
+                store.state.isRegisted = true;
+                api.getRegisted({}).then(res => {
+                  if (res.Data) {
+                    store.state.isRegisted = res.Data.IsRegisted;
+                  }
+                })
+                api.getMyHomePage({"UserId": res.Data.UserId}).then(res2 => {
+                  if (!res.Data.Subscribe) {
+                    window.localStorage.setItem('userInfo', JSON.stringify({}));
+                    window.localStorage.removeItem("token");
+                  } else {
+                    res.Data.wxHeaderImageUrl = res.Data.UserHeaderImageUrl;
+                    res.Data.wxNickName = res.Data.Nickname;
+                    res.Data.UserHeaderImageUrl = res2.Data.AvatarUrl ? res2.Data.AvatarUrl : res.Data.UserHeaderImageUrl;
+                    res.Data.Nickname = res2.Data.NikeName ? res2.Data.NikeName : res.Data.Nickname;
+                    window.localStorage.setItem('userInfo', JSON.stringify(res.Data));
+                    sessionStorage.setItem("userInfo", JSON.stringify(res.Data));
+                  }
+                })
+                if (!res.Data.Subscribe) {
+                  window.localStorage.setItem('userInfo', JSON.stringify({}));
+                  window.localStorage.removeItem("token");
+                }
+                //需要重新获取用户信息将当前值设为true, 且仅在重新获取数据时使用
+              } else {
+                window.localStorage.setItem('userInfo', JSON.stringify({}));
+                window.localStorage.removeItem("token");
+              }
+              //无论是否取得用户信息, 都可以进行相应跳转
+              sessionStorage.setItem("hasRedirect", true);
+              store.state.hasRedirect = true;
+              data = (res && res.Data) || {}
+            })
+          }
+          return data;
+        },
+      }
+    ),
+    beforeCreate()
+    {
+      window.wechatAuth = this.$wechatAuth;
+      //进行过重定向, 就不再获取用户信息
+      if (sessionStorage.getItem("hasRedirect") !== "true") {
+        //在进行当前页面的刷新操作时, code可能重复, 因此需要重新获取相应信息
+        window.wechatAuth.authorize();
+      } else {
+        //当前code 和 获取用户信息 code 不一致时, 需要再度调用获取用户信息方法.
+        if (window.localStorage.getItem("inUseCode") != window.localStorage.getItem("currentCode")) {
+          window.wechatAuth.authorize();
+        }
+      }
+    }
+    ,
+  })
+}
+window.alert = function (name) {
+  var iframe = document.createElement("IFRAME");
+  iframe.style.display = "none";
+  iframe.setAttribute("src", 'data:text/plain,');
+  document.documentElement.appendChild(iframe);
+  window.frames[0].window.alert(name);
+  iframe.parentNode.removeChild(iframe);
+};
+window.confirm = function (message) {
+  var iframe = document.createElement("IFRAME");
+  iframe.style.display = "none";
+  iframe.setAttribute("src", 'data:text/plain,');
+  document.documentElement.appendChild(iframe);
+  var alertFrame = window.frames[0];
+  var result = alertFrame.window.confirm(message);
+  iframe.parentNode.removeChild(iframe);
+  return result;
+};

@@ -1,0 +1,198 @@
+<template>
+  <div id="app" v-show="hasRedirect">
+    <router-view :key="key" v-wechat-title="$route.meta.title" v-if="!$route.meta.keepAlive"></router-view>
+    <keep-alive>
+      <router-view :key="key" v-wechat-title="$route.meta.title" v-if="$route.meta.keepAlive"></router-view>
+    </keep-alive>
+    <ModalLogin ref="modalLogin" confirmVisible="visible"></ModalLogin>
+    <attention-popup v-if="showAttention" :closePage="closeAttentionPage"></attention-popup>
+  </div>
+</template>
+
+<script>
+  import ModalLogin from '@/components/modal/ModalLogin';
+  import AttentionPopup from '@/components/AttentionPopup'
+  import * as constant from './configs/constant';
+  import axios from 'axios'
+  import Vue from 'vue'
+  import {getJSSignature, share} from './utils/WXPay'
+  //引入vux
+  import {
+    Group,
+    Cell,
+    XHeader,
+    XInput,
+    XTextarea,
+    XButton,
+    XSwitch,
+    Datetime,
+    ViewBox,
+    Search,
+    ButtonTab,
+    ButtonTabItem,
+    Divider,
+    Actionsheet,
+    AlertPlugin,
+    ConfirmPlugin
+  } from 'vux'
+  // ToastPlugin是对vux中的ToastPlugin在使用上的简单封装。
+  import ToastPlugin from './plugins/toastPlugin'
+  // 全局注册vux的组件
+  Vue.component('Group', Group)
+  Vue.component('Cell', Cell)
+  Vue.component('Datetime', Datetime)
+  Vue.component('ButtonTab', ButtonTab)
+  Vue.component('ButtonTabItem', ButtonTabItem)
+  Vue.component('Divider', Divider)
+  Vue.component('Search', Search)
+  Vue.component('XInput', XInput)
+  Vue.component('XTextarea', XTextarea)
+  Vue.component('XButton', XButton)
+  Vue.component('XHeader', XHeader)
+  Vue.component('XSwitch', XSwitch)
+  Vue.component('ActionSheet', Actionsheet)
+
+  export default {
+    name: 'app',
+    components: {
+      ModalLogin, AttentionPopup
+    },
+    data() {
+      return {
+        popupVisible: false,
+      }
+    },
+    created() {
+      document.documentElement.style.fontSize = "62.5%";
+      var uuid = window.localStorage.getItem("UUID");
+
+      if (!uuid) {
+        var d = new Date().getTime();
+        var mid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          var r = (d + Math.random() * 16) % 16 | 0;
+          d = Math.floor(d / 16);
+          return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+        uuid = mid;
+        window.localStorage.setItem("UUID", uuid);
+      }
+
+      let checkToken = function () {
+        let token = this.$store.state.yipong.token;
+        if (!token) {
+          return false
+        }
+        return true
+      }
+
+    },
+    methods: {
+      fetchDate() {
+        getJSSignature();
+        wx.ready(() => {
+          if (this.getShareInfo != "") {
+            share(this.$store.state.shareData.title, this.$store.state.shareData.description, this.$store.state.shareData.imgUrl);
+          } else {
+            share('微医邦', 'www.yipong.com');
+          }
+        })
+      },
+      refreshUrl(newValue, oldValue) {
+        this.routeWithTitle(newValue);
+        this.routeWithShare(newValue);
+        sessionStorage.setItem("currentRoute", newValue.name);
+      },
+      routeWithTitle(newValue) {
+        if (newValue.params.shareTitle) {
+          newValue.meta.title = newValue.params.shareTitle;
+        }
+      },
+      routeWithShare(newValue) { //路由时监听分享
+        let hideSharePageUrl = ["个人主页", "个人信息", "我的关注", "我的收藏", "健康档案", "档案详情",
+          "创建病历", "Hello", "咨询详情", "继续咨询", "咨询", "我的咨询",];
+        getJSSignature();
+        wx.ready(() => {
+          wx.hideMenuItems({
+            menuList: ["menuItem:share:qq", "menuItem:share:weiboApp", "menuItem:favorite",
+              "menuItem:openWithQQBrowser", "menuItem:openWithSafari", "menuItem:share:qq",
+              "menuItem:share:weiboApp", "menuItem:share:facebook", "menuItem:share:QZone",
+            ] // 要隐藏的菜单项，只能隐藏“传播类”和“保护类”按钮，所有menu项见附录3
+          });
+          if (hideSharePageUrl.includes(newValue.name)) {
+            wx.hideMenuItems({
+              menuList: ["menuItem:share:appMessage", "menuItem:share:timeline",]
+              // 要隐藏的菜单项，只能隐藏“传播类”和“保护类”按钮
+            });
+          } else {
+            wx.showMenuItems({
+              menuList: ["menuItem:share:appMessage", "menuItem:share:timeline",] //在苹果上隐藏之后, 不再显示, 需要单独处理
+            });
+          }
+          share('微医邦', 'www.yipong.com');
+        })
+      },
+      showModalLogin() {
+        this.$refs.modalLogin.open();
+      },
+    },
+    computed: {
+      key() {
+        return this.$route.name !== undefined ? this.$route.name + +new Date() : this.$route + +new Date()
+      },
+      getShareInfo() {
+        return this.$store.state.shareData.title + this.$store.state.shareData.description + this.$store.state.shareData.imgUrl;
+      },
+      registed() {
+          if (this.$store.state.isSubscribe) {
+            return this.$store.state.isRegisted;
+          }
+          return true;
+      },
+      hasRedirect() {
+        let redirectFlag = sessionStorage.getItem("hasRedirect") || this.$store.state.hasRedirect;
+        return redirectFlag === true || redirectFlag === "true";
+      },
+      showAttention() {
+          return this.$store.state.payAttention;
+      },
+      closeAttentionPage() {
+        return  this.$store.state.closeAttentionPage;
+      },
+    },
+    watch: {
+      "$route": "refreshUrl",
+      getShareInfo: function () {
+        this.fetchDate();
+      },
+      registed: function (currentValue, oldValue) {
+        if (!currentValue) {
+          this.showModalLogin();
+        }
+      },
+    },
+    updated() {
+      // 提交sdk连接请求
+      this.$store.dispatch('updateRefreshState')
+    },
+    destroyed() {
+
+    }
+  }
+
+</script>
+
+<style>
+  html {
+    font-size: 62.5%;
+  }
+
+  #app {
+    font-family: 'Avenir', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    color: #2c3e50;
+    height: 100%;
+    font-size: 1.6rem;
+  }
+</style>

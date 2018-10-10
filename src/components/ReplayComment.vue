@@ -1,0 +1,399 @@
+<template>
+  <div class="replay-comment">
+    <div class="fixed-body"
+         v-infinite-scroll="loadMore"
+         infinite-scroll-disabled="allLoaded"
+         infinite-scroll-distance="10"
+    >
+      <div class="comment-body">
+        <div class="pl" :style="commentMainStyle">
+          <div class="pinglun-tx">
+            <img class="head-img" :src="commentInfo.commenterHeaderImgUrl"
+                 v-if="commentInfo.commenterHeaderImgUrl != null">
+            <img src="../assets/default_avatar.png" v-else>
+          </div>
+          <div class="pinglun-tab">
+            <div class="pl-title replay-commenter">{{commentInfo.commenter}}</div>
+            <div class="pinglun-dz">
+              <img @click="cancelPraise()" src="../images/dz-1.png" v-if="commentInfo.isPraise">
+              <img @click="enterPraise()" src="../images/dz-2.png" v-else>
+              <span class="pl-dz-num">{{commentInfo.customerPraiseCount}}</span>
+            </div>
+          </div>
+          <div class="pinglun-zw" ref="commentContent" @click="selectCommenter(commentInfo.commenterId)">
+            <div class="comment-content mb5" style="">{{commentInfo.commentContent}}</div>
+            <div class="hftime">{{commentInfo.commentDateTime}}&nbsp;&nbsp;&nbsp;&nbsp;</div>
+          </div>
+        </div>
+      </div>
+      <div class="comment-replay" v-if="replayDetail.length > 0">
+        <div class="replay-detail" @click="selectCommenter(item.replyerId, item.replyer)" :key="item.Id"
+             v-for="(item, index) in replayDetail">
+          <span v-if="!item.replyerTo || item.replyerTo == item.replyer">
+            <span
+              class="replay-commenter">{{item.replyer}}</span><span>：</span><span>{{item.replyContent}}</span>
+          </span>
+          <span v-else>
+            <span class="replay-commenter">{{item.replyer}}</span><span>回复</span><span
+            class="replay-commenter">{{item.replyerTo}}</span><span>：</span><span>{{item.replyContent}}</span>
+          </span>
+        </div>
+        <p v-show="loading" class="page-infinite-loading">
+          <mt-spinner type="fading-circle"></mt-spinner>
+          加载中...
+        </p>
+      </div>
+    </div>
+    <div class="comment-replay-input">
+      <div class="replay-input-all">
+        <form action="">
+          <input type="text" class="replay-input" :placeholder="replayTo.name" v-model="replayTo.content"/>
+          <input type="hidden" name="for-fill-and-no-use"/>
+        </form>
+      </div>
+      <mt-button class="replay-button" type="primary" @click="doReplay()">回复</mt-button>
+    </div>
+  </div>
+</template>
+<script>
+  import {Toast} from 'mint-ui';
+  import {InfiniteScroll} from 'mint-ui';
+  const defaultReplayTo = "写回复";
+  export default {
+    data() {
+      return {
+        pageIndex: 1,
+        pageSize: 10,
+        requestFunc: null,
+        submitFunc: null,
+        commentInfo: {},
+        replayDetail: [],
+        replayTo: {
+          name: defaultReplayTo,
+          id: null,
+          content: null,
+          isReplayComment: true,
+        },
+        replayParams: {
+          praiseType: null,
+          commentsType: null,
+        },
+        requestParams: null,
+        loading: false,
+        allLoaded: false,
+        commentMainStyle: {
+          height: '',
+          'min-height': '80px',
+        },
+        initStyle: false,
+        registed: null,
+      }
+    },
+    updated() {
+      if (this.commentInfo !== {} && !this.initStyle) {
+        this.changeStyle();
+      }
+    },
+    computed: {
+      type() {
+        return this.$route.params.typeId;
+      },
+      commentId() {
+        return this.$route.params.commentId;
+      },
+      userInfo() {
+        let userInfo = window.localStorage.getItem("userInfo");
+        return JSON.parse(userInfo);
+      }
+    },
+    methods: {
+      changeStyle() {
+        let height = this.$refs['commentContent'].offsetHeight;
+        this.commentMainStyle.height = height + 20 + "px";
+        this.initStyle = true;
+      },
+      dealData(data) {
+        this.loading = false;
+        if (data.Data) {
+          data.Data.Data.forEach((item) => {
+            this.replayDetail.push(item);
+          })
+          if (data.Data.Data.length > 0) {
+            this.allLoaded = false;
+          }
+        }
+      },
+      afterComment() {
+        this.replayDetail = [];
+        this.requestParams.PageIndex = 1;
+        this.replayTo.content = "";
+        this.requestFunc();
+      },
+      enterPraise() {
+        if (!this.registed) {
+          this.$store.state.exclusionToPop = true;
+          return;
+        }
+        var params = {
+          "PraiseID": this.commentInfo.Id,
+          "PraiseType": this.replayParams.praiseType,
+          "IsPraise": true,
+        }
+        this.api.PariseVideo(params).then(res => {
+          if (res.Result == 1) {
+            this.commentInfo.isPraise = true;
+            this.commentInfo.customerPraiseCount++;
+          } else {
+            Toast(res.ResultMessage);
+          }
+        });
+      },
+      cancelPraise() {
+        if (!this.registed) {
+          this.$store.state.exclusionToPop = true;
+          return;
+        }
+        var params = {
+          "PraiseID": this.commentInfo.Id,
+          "PraiseType": this.replayParams.praiseType,
+          "IsPraise": false,
+        }
+        this.api.PariseVideo(params).then(res => {
+          if (res.Result == 1) {
+            this.commentInfo.isPraise = false;
+            this.commentInfo.customerPraiseCount--;
+          } else {
+            Toast(res.ResultMessage);
+          }
+        });
+      },
+      selectCommenter(commenterId, commenterName) {
+        this.replayTo.id = commenterId;
+        this.replayTo.content = "";
+        //判断回复给回复人 和 被回复人
+        if (commenterName && commenterName.length > 0 && commenterId != this.userInfo.UserId) {
+          this.replayTo.isReplayComment = false;
+          this.replayTo.name = "回复：" + commenterName;
+        } else {
+          this.replayTo.isReplayComment = true;
+          this.replayTo.name = defaultReplayTo;
+        }
+      },
+      loadMore() {
+        this.allLoaded = true;
+        this.loading = true;
+        setTimeout(() => {
+          this.requestFunc();
+        }, 1500)
+      },
+      doReplay() {
+        if (!this.registed) {
+          this.$store.state.exclusionToPop = true;
+          return;
+        }
+        var params = {
+          CommentsID: this.$route.params.serviceId,
+          CommentsType: this.replayParams.commentsType,
+          ReplyID: this.commentInfo.Id,
+          CommentContent: this.replayTo.content,
+          ReplyToCustomerId: this.replayTo.id,
+          IsReplyToComment: this.replayTo.isReplayComment,
+        }
+        this.submitFunc(params);
+      },
+      initVideoData() {
+        this.replayParams.praiseType = 11;
+        this.replayParams.commentsType = 2;
+        this.api.getweHealthDetail({Id: this.commentId}).then(res => {
+          this.commentInfo = res.Data;
+          this.replayTo.id = this.commentInfo.commenterId;
+        })
+        this.requestFunc = function () {
+          this.api.getCustomerCommentReplys(this.requestParams).then(res => {
+            this.dealData(res);
+            this.requestParams.PageIndex++;
+          })
+        };
+        this.submitFunc = function (params) {
+          this.api.releaseReplyVideo(params).then(res => {
+            if (res.Result == 1) {
+              this.afterComment();
+            } else {
+              Toast("评论失败，请稍后再试");
+            }
+          })
+        }
+      },
+      initLiveData() {
+        this.replayParams.praiseType = 10;
+        this.api.getLiveCommentInfo({Id: this.commentId}).then(res => {
+          this.commentInfo = res.Data;
+          this.replayTo.id = this.commentInfo.commenterId;
+        })
+        this.requestFunc = function () {
+          this.api.getLiveCommentList(this.requestParams).then(res => {
+            this.dealData(res);
+            this.requestParams.PageIndex++;
+          })
+        };
+        this.submitFunc = function (params) {
+          var param = {
+            livestreamMessageId: params.ReplyID,
+            replyContent: params.CommentContent,
+            replyerToId: params.ReplyToCustomerId,
+            userId: this.userInfo.UserId
+          }
+          this.api.createMessageReply(param).then(res => {
+            if (res.Result == 1) {
+              this.afterComment();
+            } else {
+              Toast("评论失败，请稍后再试");
+            }
+          })
+        }
+      },
+      initWeHealthData() {
+        this.replayParams.praiseType = 12;
+        this.api.getweHealthDetail({Id: this.commentId}).then(res => {
+          this.commentInfo = res.Data;
+          this.replayTo.id = this.commentInfo.commenterId;
+        })
+        this.requestFunc = function () {
+          this.api.getCustomerCommentReplys(this.requestParams).then(res => {
+            this.dealData(res);
+            this.requestParams.PageIndex++;
+          })
+        };
+        this.submitFunc = function (params) {
+          var param = {
+            studioStatusId: params.CommentsID,
+            content: params.CommentContent,
+            isReplyToComment: params.IsReplyToComment,
+            replyerTo: params.ReplyID,
+            replyerToCustomerId: params.ReplyToCustomerId,
+            userId: this.userInfo.UserId
+          }
+          this.api.createWorkRoomDynamicReply(param).then(res => {
+            if (res.Result == 1) {
+              this.afterComment();
+            } else {
+              Toast("评论失败，请稍后再试");
+            }
+          })
+        }
+      },
+    },
+    mounted() {
+      //分享视频详情页, 点击进入时,处理
+      this.registed = window.localStorage.getItem("hasRegisted") === "true";
+      //初始化评论视频列表
+      this.requestParams = {
+        Id: this.commentId,
+        PageIndex: this.pageIndex,
+        PageSize: this.pageSize,
+      }
+      switch (this.type) {
+        case "video":
+          this.initVideoData();
+          break;
+        case "live":
+          this.initLiveData();
+          break;
+        case "weHealth":
+          this.initWeHealthData();
+          break;
+        default:
+          break;
+      }
+      this.requestFunc();
+    },
+    destroyed() {
+      this.$store.state.exclusionToPop = false;
+    },
+  }
+</script>
+<style scoped lang="scss">
+  @import '../common/style.css';
+
+  .replay-comment {
+    height: calc(100% - 50px);
+    .fixed-body {
+      position: fixed;
+      top: 0px;
+      bottom: 50px;
+      width: 100%;
+      height: calc(100% - 46px);
+      overflow: scroll;
+    }
+    .replay-commenter {
+      color: #03a9f4;
+    }
+    .comment-body {
+      .pl {
+        padding-top: 10px;
+        background-color: white;
+        margin-bottom: 1px;
+        .pinglun-tx {
+          height: 42px;
+          .head-img {
+            border-radius: 42px;
+          }
+        }
+        .pinglun-tab {
+          .pl-title {
+            text-align: left;
+          }
+        }
+        .pinglun-zw {
+          .comment-content {
+            width: 100%;
+            word-break: break-all;
+            word-wrap: break-word;
+            text-align: left;
+            color: black;
+          }
+        }
+      }
+    }
+    .comment-replay {
+      width: calc(100% - 10px);
+      background-color: white;
+      padding: 8px 10px 10px 0;
+      .replay-detail {
+        width: calc(84% - 30px);
+        text-align: left;
+        margin: 0 0 6px 16%;
+        background-color: #F2F4F7;
+        padding: 6px 20px 6px 5px;
+        border-radius: 5px;
+        font-size: 1.4rem;
+        line-height: 20px;
+      }
+    }
+    .comment-replay-input {
+      position: fixed;
+      width: calc(100% - 20px);
+      background-color: white;
+      bottom: 0px;
+      padding: 8px 10px;
+      .replay-input-all {
+        width: 80%;
+        float: left;
+      }
+      .replay-input {
+        width: 90%;
+        height: 30px;
+        line-height: 30px;
+        font-size: 1.5rem;
+        background-color: #EEEEEE;
+        border-radius: 30px;
+        padding: 0px 5%;
+      }
+      .replay-button {
+        width: 15%;
+        height: 28px;
+        font-size: 1.3rem;
+      }
+    }
+  }
+</style>

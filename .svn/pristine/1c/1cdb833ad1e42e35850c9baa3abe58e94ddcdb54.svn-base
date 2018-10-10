@@ -1,0 +1,135 @@
+// The Vue build version to load with the `import` command
+// (runtime-only or standalone) has been set in webpack.base.conf with an alias.
+import Vue from "vue";
+import App from "./App";
+import Mint, {Indicator, MessageBox} from "mint-ui";
+import "mint-ui/lib/style.css";
+import router from "./router";
+import VueTouch from "./plugins/touchEvent";
+import "./common/index.scss";
+import api from "./service/api";
+import VWechatAuth from "v-wechat-auth";
+import VueScroller from "vue-scroller";
+import * as constant from "./configs/constant";
+import store from "./store";
+
+Vue.use(VueScroller)
+Vue.use(VueTouch)
+Vue.use(Mint);
+Vue.use(VWechatAuth)
+Vue.config.productionTip = false
+Vue.prototype.api = api;
+Vue.use(require('vue-wechat-title'))
+/* eslint-disable no-new */
+//判断是第几次进入
+sessionStorage.getItem("isFirst") ? "" : sessionStorage.setItem("isFirst", true);
+Indicator.open();
+//监听分享
+var currentUrl = window.location.href;
+if (window.location.href.indexOf("?url=") != -1) {
+  var redirectUrl = currentUrl.split("?url=")[0] + '#' + currentUrl.split("?url=")[1].split("&")[0];
+  currentUrl = redirectUrl.replace(/(\/#){2,}/g, "/#");
+  location.href = redirectUrl;
+} else if (currentUrl.match(/(\/#){2,}/g)) {
+  currentUrl = currentUrl.replace(/(\/#){2,}/g, "/#");
+  location.href = currentUrl;
+} else {
+  let getUrlStr = function (name) {
+    var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)')
+    var r = window.location.search.substr(1).match(reg)
+    if (r != null) return unescape(r[2])
+    return null
+  }
+
+  let code = getUrlStr('code')
+  new Vue({
+    el: '#app',
+    router,
+    store,
+    template: '<App/>',
+    components: {App},
+    //初始化实例对象的时候就会执行.
+    // onOpen:
+    wechatAuth: new VWechatAuth({
+      appId: constant.appid,
+      scope: 'snsapi_userinfo',
+      authorize () {
+        api.wechatcodelogin({
+          'code': code
+        }).then(res => {
+          if (res.Data != null) {
+            // if (!res.Data.Subscribe) {
+            //   location.href = constant.subscribeUrl;
+            // } else {
+            //只有当用户关注了之后, 才能够显示内容
+            window.localStorage.setItem('userInfo', JSON.stringify(res.Data))
+            window.localStorage.setItem('token', JSON.stringify(res.Data.Token))
+            sessionStorage.setItem("hasGetLoginData", true);
+            sessionStorage.setItem("userInfo", JSON.stringify(res.Data));
+            sessionStorage.setItem("token", JSON.stringify(res.Data.Token));
+            if (!res.Data.IsRegisted) {
+              sessionStorage.setItem("isRegisted", false);
+              store.state.isRegisted = false;
+            } else {
+              sessionStorage.setItem("isRegisted", true);
+              store.state.isRegisted = true;
+            }
+            store.state.hasRedirect = true;
+            // }
+            //未关注跳转至关注页面
+          } else if (!sessionStorage.getItem("hasGetLoginData")) {
+            let url = constant.urlhost + window.location.hash;
+            let appid = constant.appid;
+            let urlpush = encodeURIComponent(url);
+            location.href = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appid}&redirect_uri=${urlpush}&response_type=code&scope=snsapi_userinfo&state=STATE#wechat_redirect`
+          }
+          var data = (res && res.Data) || {}
+          return data
+        })
+      },
+    }),
+    beforeCreate() {
+      window.wechatAuth = this.$wechatAuth;
+      if (sessionStorage.getItem("hasGetLoginData") == true) {
+        Indicator.close();
+        store.state.hasRedirect = true;
+      } else {
+        if (sessionStorage.getItem("isFirst")) {
+          window.wechatAuth.authorize();
+        } else {
+          //当异步延迟时,这里也做延迟处理.依然没有获取到用户信息, 则重定向刷新.
+          setTimeout(function () {
+            if (!sessionStorage.getItem("hasGetLoginData")) {
+              window.wechatAuth.authorize();
+            }
+          }, 200)
+        }
+      }
+    },
+  })
+}
+window.alert = function (name) {
+  var iframe = document.createElement("IFRAME");
+  iframe.style.display = "none";
+  iframe.setAttribute("src", 'data:text/plain,');
+  document.documentElement.appendChild(iframe);
+  window.frames[0].window.alert(name);
+  iframe.parentNode.removeChild(iframe);
+};
+window.confirm = function (message) {
+  var iframe = document.createElement("IFRAME");
+  iframe.style.display = "none";
+  iframe.setAttribute("src", 'data:text/plain,');
+  document.documentElement.appendChild(iframe);
+  var alertFrame = window.frames[0];
+  var result = alertFrame.window.confirm(message);
+  iframe.parentNode.removeChild(iframe);
+  return result;
+};
+
+router.beforeEach((to, from, next) => {
+  if (to.params.shareTitle && to.params.shareTitle.trim() != '') {
+    document.title = to.meta.title = to.params.shareTitle;
+  }
+  next()
+})

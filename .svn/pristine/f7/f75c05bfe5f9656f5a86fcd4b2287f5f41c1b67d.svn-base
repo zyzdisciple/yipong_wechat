@@ -1,0 +1,272 @@
+<template>
+  <div class="video-element" :style="{width: widthStyle, height: heightStyle}">
+    <div v-show="showImg" class="mint-content-video"
+         :style="{'background-image': 'url(' + posterImageUrl + ')'}"></div>
+    <div v-if="showEndedImg" class="ended-img">
+      <div class="video-thanks">
+        <img @click="videoAdmire()" src="../../images/zhixie.png"/><span>致谢</span>
+      </div>
+      <div class="video-replay">
+        <img @click="videoReplay" src="../../images/replay.png"/><span>重播</span>
+      </div>
+    </div>
+    <video class="videoBackground"
+           :src="videoUrl"
+           ref="videoItem"
+           preload="auto"
+           playsinline="true"
+           :webkit-playsinline="false"
+           :x5-video-player-type="x5H5"
+           :x5-video-player-fullscreen="x5Full"
+           :x5-video-orientation="videoOrientation"
+           x5-playsinline="true"
+           :style="{
+                   width: widthStyle,
+                   height: heightStyle
+               }"
+           :controls="controls"
+           @play="onPlayerPlay($event)"
+           @pause="onPlayerPause($event)"
+           @ended="onPlayerEnded($event)"
+           v-if="!beRemoved"
+    />
+    <div class="center" v-if="isStop && !showEndedImg">
+      <img :style="{width: pauseImageWidth}" style="min-height: 50px" @click="videoPlay()"
+           :src="require('../../images/video_btn.png')" class="startbuttom">
+    </div>
+  </div>
+</template>
+
+<script>
+  import {Toast} from 'mint-ui';
+  import * as constant from '../../configs/constant';
+  import bgImg from '../../images/liveBackground.png'
+  export default {
+    data() {
+      return {
+        isEnd: false,
+        isStop: true,
+        heightStyle: document.documentElement.clientWidth * 9 / 16 + 'px',
+        widthStyle: document.documentElement.clientWidth + 'px',
+        pauseImageWidth: document.documentElement.clientWidth * 9 / 42 + 'px',
+        x5H5: '',
+        x5Full: '',
+        showImg: true,
+        hasPlayed: false,
+        isCenter: true, //表示是否在中间.
+        ISIOS: false,
+        beRemoved: false,
+        touch: {
+          startY: 0,//开始触摸的位置
+          moveY: 0,//滑动时的位置
+          disY: 0,//结束触摸的位置
+          moveDistance: 0 //偏移总量
+        },
+        showEndedImg: false,
+      }
+    },
+    computed: {
+      controls() {
+        if (this.ISIOS && this.hasPlayed) {
+          return true;
+        } else if (!this.ISIOS) {
+          return !this.isStop;
+        }
+      }
+    },
+    props: {
+      posterImageUrl: {
+        type: [String, Object],
+        default() {
+          return bgImg;
+        }
+      },
+      videoUrl: [String, Object],
+      videoId: {
+        type: [String, Number],
+        default() {
+          return '';
+        }
+      },
+      listenPlayCount: {
+        type: Boolean,
+        default() {
+          return true;
+        }
+      },
+      fullScreen: {
+        type: Boolean,
+        default() {
+          return false;
+        }
+      },
+      isList: {
+        type: Boolean,
+        default() {
+          return false;
+        }
+      },
+      videoOrientation: {
+        type: [String, Object],
+        default() {
+          return "portraint";
+        }
+      },
+      //是否监听播放结束事件
+      replay: {
+        type: [String, Boolean],
+        default() {
+          return false;
+        }
+      }
+    },
+    methods: {
+      // 监听视频暂停动作
+      onPlayerPause(){
+        this.isStop = true;
+      },
+      onPlayerEnded() {
+        if (this.replay) {
+          this.beRemoved = true;
+          this.showImg = true;
+          this.showEndedImg = true;
+        }
+        this.isEnd = true;
+        this.isStop = true;
+      },
+      videoPlay(){
+        this.$refs.videoItem.play();
+      },
+      // 监听视频播放次数
+      onPlayerPlay() {
+        //监听次数
+        this.hasPlayed = true;
+        this.isStop = false;
+        this.showImg = false;
+        this.isEnd = false;
+        this.$emit("video-play", this.videoId);
+        if (this.listenPlayCount) {
+          this.api.playVideoReport({"VideoId": this.videoId, "ClientTypeId": 3});
+        }
+      },
+      //列表滚动相关
+      videoScrollOut() {
+        if (this.ISIOS) {
+          this.$refs.videoItem.pause();
+        } else if (this.hasPlayed) {
+          //只删除已播放过的视频
+          this.beRemoved = true;
+          this.showImg = true;
+          this.hasPlayed = false;
+        }
+      },
+      //列表滚动相关
+      videoScrollIn() {
+        if (!this.ISIOS && !this.hasPlayed) {
+          this.beRemoved = false;
+        }
+      },
+      pausePlayedVideo(videoId) {
+        //当点击播放,但还未移除范围时, 或未进行滑动时, hasPlayed为true
+        if (!this.ISIOS && this.hasPlayed && this.videoId != videoId) {
+          this.beRemoved = true;
+          this.showImg = true;
+          this.isStop = true;
+        }
+      },
+      //致谢
+      videoAdmire() {
+        this.$router.push({path: '/pay/CustomerAdmire/' + this.videoId + "/2101"});
+      },
+      //重播
+      videoReplay() {
+        this.showEndedImg = false;
+        this.$refs.videoItem.play();
+      },
+    },
+    updated() {
+      if (this.beRemoved) {
+        this.beRemoved = false;
+      }
+    },
+    mounted(){
+      if (this.fullScreen) {
+        this.x5H5 = "h5";
+        this.x5Full = true;
+        //监听窗口变动
+        window.onresize = () => {
+          this.widthStyle = window.innerWidth + "px";
+          this.heightStyle = window.innerHeight + "px";
+        }
+      }
+      //判断IOS
+      var u = navigator.userAgent;
+      var isiOS = !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/); //ios终端
+      this.ISIOS = isiOS;
+    },
+  }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+  @import '../../common/style.css';
+
+  .video-element {
+    position: relative;
+    .mint-content-video {
+      width: 100%;
+      height: 100%;
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      z-index: 1;
+    }
+    .center {
+      width: 100%;
+      height: 50px;
+      position: absolute;
+      top: 40%;
+      z-index: 2;
+    }
+    .ended-img {
+      position: absolute;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      font-size: 1.5rem;
+      background-color: rgba(0, 0, 0, 0.8);
+      .video-thanks {
+        position: absolute;
+        left: 30%;
+        top: 30%;
+      }
+      .video-replay {
+        position: absolute;
+        top: 30%;
+        left: 60%;
+      }
+      span {
+        display: block;
+        color: #FFF;
+      }
+      img {
+        width: 45px;
+        min-height: 0px;
+      }
+      img:first-child {
+
+      }
+      img:nth-child(2) {
+
+      }
+    }
+  }
+
+  video {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+  }
+</style>
