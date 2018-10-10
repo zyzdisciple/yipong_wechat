@@ -3,7 +3,7 @@
     <div class="page-wrap tabb">
       <div class="wjklist2 brw bb">
         <div v-if="WeHealthData.workRoomDynamicModeId == 1">
-          <div class="wjklist2-contect" style="text-align:left">
+          <!--<div class="wjklist2-contect" style="text-align:left">
             <div class="t1" style="text-align:center;font-size: large">{{WeHealthData.title}}</div>
             <div style="width: 100%; height: 20px;color: #787878;font-size: 1.2rem;margin: 5px 0px;">
               <div style="float:left">{{WeHealthData.createTime}}</div>
@@ -14,7 +14,7 @@
               <img :key="Index" v-for="(Item,Index) in WeHealthData.fileList" :src="Item.Url"
                    style="width: 32%;margin-right: 2%">
             </p>
-          </div>
+          </div>-->
         </div>
         <div class="type2" v-if="WeHealthData.workRoomDynamicModeId == 0">
           <div class="wjklist2-title">
