@@ -1,12 +1,21 @@
 <template>
   <div class="weHealthDetail">
-    <div class="we-health-page" v-if="WeHealthData.workRoomDynamicModeId == 1">
-      <iframe :src="HTMLUrl" ref="frame"></iframe>
-      <div class="shade"></div>
-    </div>
-    <div class="page-wrap tabb" v-else>
+    <div class="page-wrap tabb">
       <div class="wjklist2 brw bb">
-
+        <div v-if="WeHealthData.workRoomDynamicModeId == 1">
+          <div class="wjklist2-contect" style="text-align:left">
+            <div class="t1" style="text-align:center;font-size: large">{{WeHealthData.title}}</div>
+            <div style="width: 100%; height: 20px;color: #787878;font-size: 1.2rem;margin: 5px 0px;">
+              <div style="float:left">{{WeHealthData.createTime}}</div>
+              <div style="float:left;margin-left: 10px;line-height: 20px;">{{WeHealthData.WorkRoom.Name}}发布</div>
+            </div>
+            <div class="t2" style="padding:0px 5px" v-html="WeHealthData.content"></div>
+            <p v-if="WeHealthData.fileList.length > 0">
+              <img :key="Index" v-for="(Item,Index) in WeHealthData.fileList" :src="Item.Url"
+                   style="width: 32%;margin-right: 2%">
+            </p>
+          </div>
+        </div>
         <div class="type2" v-if="WeHealthData.workRoomDynamicModeId == 0">
           <div class="wjklist2-title">
             <div class="title-r">
@@ -84,21 +93,21 @@
           <div style="font-size: 1.3rem;color: #757575;">等待你的评论, 快来抢沙发!</div>
         </div>
       </div>
-    </div>
-    <!-- 微健康评论-->
-    <div class="mint-tabbar is-fixed">
-      <div class="plbar-1" style="width: 80%">
-        <div class="pl-input">
-          <form @submit.prevent="submit">
-            <input v-model="comments" class="pl-input1">
-            <img src="../../images/pl-bj.png" class="pl-bj" style="margin-left: 8px">
-            <input type="submit" class="pl-input2"/>
-          </form>
+      <!-- 微健康评论-->
+      <div class="mint-tabbar is-fixed">
+        <div class="plbar-1" style="width: 80%">
+          <div class="pl-input">
+            <form @submit.prevent="submit">
+              <input v-model="comments" class="pl-input1">
+              <img src="../../images/pl-bj.png" class="pl-bj" style="margin-left: 8px">
+              <input type="submit" class="pl-input2"/>
+            </form>
+          </div>
         </div>
-      </div>
-      <div class="plbar-2" style="width: 15%">
-        <img class="mr20" @click="cancelCollection" src="../../images/pl-sc-1.png" v-if="collect">
-        <img class="mr20" @click="enterCollection" src="../../images/pl-sc-0.png" v-else>
+        <div class="plbar-2" style="width: 15%">
+          <img class="mr20" @click="cancelCollection" src="../../images/pl-sc-1.png" v-if="collect">
+          <img class="mr20" @click="enterCollection" src="../../images/pl-sc-0.png" v-else>
+        </div>
       </div>
     </div>
   </div>
@@ -124,7 +133,6 @@
         pageIndex: 1,
         hasNextPage: true,
         allLoaded: false,
-        HTMLUrl: null,
       }
     },
     methods: {
@@ -282,13 +290,7 @@
         "Id": this.$route.params.WeHealthID,
       }
       this.api.getWorkRoomDynamicById(params).then(res => {
-        //TODO 临时强制为1
-        res.Data.workRoomDynamicModeId = 1;
         this.WeHealthData = res.Data;
-        if (res.Data.workRoomDynamicModeId == 1) {
-            let url = "http://www.yipong.com/userhome/sciencearticledetail?id=11&customerId=72998";
-            this.HTMLUrl = url;
-        }
         this.$store.state.shareData.title = res.Data.title;
         this.$store.state.shareData.description = res.Data.content;
         this.$store.state.shareData.imgUrl = res.Data.ThumbUrl;
@@ -345,26 +347,6 @@
       }
       .content-main {
         margin-top: 5px;
-      }
-    }
-  }
-  .weHealthDetail {
-    height: 100%;
-    .we-health-page {
-      height: calc(100% - 55px);
-      position: relative;
-      iframe {
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        left: 0;
-        z-index: 1;
-      }
-      .shade {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        z-index: 2;
       }
     }
   }

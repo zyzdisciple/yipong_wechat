@@ -234,7 +234,7 @@
               去支付
             </button>
             <button calss="mint-msgbox-btn mint-msgbox-confirm" v-else
-                    @click="signUp(liveInfo.TicketExpense, liveInfo.Id, liveInfo.Title)"
+                    @click="signUp(0, liveInfo.Id, liveInfo.Title)"
                     style="
                     margin-left: 30%;
                     width: 40%;
@@ -664,7 +664,12 @@
             this.liveApply = false;
             if (res.Data) {
               Toast("报名成功！");
-              this.liveInfo.IsAppointed = 1;
+              this.liveYuList.forEach((item, index) => {
+                if (item.Id == liveID) {
+                  item.IsAppointed = true;
+                  this.liveYuList.splice(index, 1, item);
+                }
+              })
             } else {
               Toast("报名失败，请稍后再试！");
             }
@@ -843,6 +848,8 @@
       }
     }
     .mint-msgbox-content {
+      padding-left: 0px;
+      padding-right: 0px;
       border: none;
     }
   }
