@@ -359,14 +359,5 @@ export default new Router({
       },
       component: resolve => require(['@/components/ReplayComment'], resolve)
     },
-    {
-      path: '/VHTMLPanel/:url*',
-      name: '评论回复',
-      meta: {
-        title: '评论回复'
-      },
-      props: true,
-      component: resolve => require(['@/components/HTMLPanel'], resolve)
-    },
   ],
 })

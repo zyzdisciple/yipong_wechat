@@ -3,18 +3,7 @@
     <div class="page-wrap tabb">
       <div class="wjklist2 brw bb">
         <div v-if="WeHealthData.workRoomDynamicModeId == 1">
-          <div class="wjklist2-contect" style="text-align:left">
-            <div class="t1" style="text-align:center;font-size: large">{{WeHealthData.title}}</div>
-            <div style="width: 100%; height: 20px;color: #787878;font-size: 1.2rem;margin: 5px 0px;">
-              <div style="float:left">{{WeHealthData.createTime}}</div>
-              <div style="float:left;margin-left: 10px;line-height: 20px;">{{WeHealthData.WorkRoom.Name}}发布</div>
-            </div>
-            <div class="t2" style="padding:0px 5px" v-html="WeHealthData.content"></div>
-            <p v-if="WeHealthData.fileList.length > 0">
-              <img :key="Index" v-for="(Item,Index) in WeHealthData.fileList" :src="Item.Url"
-                   style="width: 32%;margin-right: 2%">
-            </p>
-          </div>
+          <div v-html="html"></div>
         </div>
         <div class="type2" v-if="WeHealthData.workRoomDynamicModeId == 0">
           <div class="wjklist2-title">
@@ -133,6 +122,7 @@
         pageIndex: 1,
         hasNextPage: true,
         allLoaded: false,
+        html: null,
       }
     },
     methods: {
@@ -290,11 +280,20 @@
         "Id": this.$route.params.WeHealthID,
       }
       this.api.getWorkRoomDynamicById(params).then(res => {
-        this.WeHealthData = res.Data;
-        this.$store.state.shareData.title = res.Data.title;
-        this.$store.state.shareData.description = res.Data.content;
-        this.$store.state.shareData.imgUrl = res.Data.ThumbUrl;
-        this.collect = res.Data.isCollection;
+          if (res.Data.workRoomDynamicModeId == 1) {
+              params = Object.assign({
+                FlagLabel: true,
+              }, params);
+              this.api.getWorkRoomDynamicById(params).then(res2 => {
+                this.WeHealthData = res2.Data;
+                this.html = res2.Data.content;
+              })
+          }
+          this.collect = res2.Data.isCollection;
+          this.$store.state.shareData.title = res2.Data.title;
+          this.$store.state.shareData.description = res2.Data.content;
+          this.$store.state.shareData.imgUrl = res2.Data.ThumbUrl;
+
       });
       this.loadComments(10);
     },
