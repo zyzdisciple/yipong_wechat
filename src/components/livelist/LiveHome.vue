@@ -666,6 +666,7 @@
               Toast("报名成功！");
               this.liveYuList.forEach((item, index) => {
                 if (item.Id == liveID) {
+                  item.AppointCount++;
                   item.IsAppointed = true;
                   this.liveYuList.splice(index, 1, item);
                 }

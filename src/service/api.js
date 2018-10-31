@@ -190,7 +190,6 @@ export function   postDataForRefresh(url, data) {
       info = userinfo;
     }
 
-
     data.secData = {
       "app_from": "web app",
       "app_id": "1",
@@ -225,6 +224,54 @@ export function   postDataForRefresh(url, data) {
       })
   })
 }
+
+//loginIn接口单独调用, 不能传递 token;
+export function   postDataForLoginIn(url, data) {
+  return new Promise((resolve, reject) => {
+    let uuid = window.localStorage.getItem("UUID")
+    let userinfo = window.localStorage.getItem("userInfo")
+    let info = null;
+    try {
+      info = JSON.parse(userinfo)
+    } catch (error) {
+      info = userinfo;
+    }
+
+    data.secData = {
+      "app_from": "web app",
+      "app_id": "1",
+      "app_version": "1.0.20",
+      "device_name": "web",
+      "device_type": "web_app",
+      "identify_key": uuid,
+      "language": "zh",
+      "network_type": "2",
+      "record": "1",
+      "version": 6.0,
+    }
+    if (info) {
+      data.secData["user_id"] = info.UserId
+    }
+    axios({
+      method: 'post',
+      url: url,
+      data: JSON.stringify(data),
+      headers: {'Content-Type': 'application/json'},
+      withCredentials: true
+    })
+      .then(response => {
+        resolve(response.data);
+        Indicator.close();
+      }, err => {
+        reject(err);
+      })
+      .catch((error) => {
+        reject(error)
+      })
+  })
+}
+
+
 
 export default {
   basicDatas(params) { //获取基础数据
@@ -405,7 +452,7 @@ export default {
     return postData('/api/Community/Praise', params)
   },
   wechatcodelogin(params) { //验证秘钥
-    return postData('/api/user/wechatcodelogin', params)
+    return postDataForLoginIn('/api/user/wechatcodelogin', params)
   },
   getwechatjssignature(params) { //提交验证秘钥
     return postData('/api/user/getwechatjssignature', params)

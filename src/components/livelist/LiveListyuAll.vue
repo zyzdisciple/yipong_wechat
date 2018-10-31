@@ -132,6 +132,7 @@
             if (res.Data) {
               Toast("报名成功！");
               this.liveInfo.IsAppointed = 1;
+              this.liveInfo.AppointCount++;
             } else {
               Toast("报名失败，请稍后再试！");
             }
