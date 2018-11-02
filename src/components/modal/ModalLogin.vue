@@ -175,6 +175,7 @@
             Toast("信息完善成功");
             this.$store.state.isRegisted = true;
             this.$store.state.reloadUserInfo = true;
+            window.localStorage.removeItem("hasRegisted");
             window.wechatAuth.authorize();
           } else {
             Toast(res.ResultMessage);

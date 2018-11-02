@@ -131,6 +131,10 @@ export function postBase(url, data) {
 }
 //post方法
 export function postData(url, data) {
+  if (!(sessionStorage.getItem("isFirst") === "true")) {
+      window.localStorage.removeItem('userInfo');
+      window.localStorage.removeItem('token');
+  }
   return new Promise((resolve, reject) => {
     Indicator.open();
     let uuid = window.localStorage.getItem("UUID")
@@ -226,7 +230,7 @@ export function   postDataForRefresh(url, data) {
 }
 
 //loginIn接口单独调用, 不能传递 token;
-export function   postDataForLoginIn(url, data) {
+export function   postDataWithNoToken(url, data) {
   return new Promise((resolve, reject) => {
     let uuid = window.localStorage.getItem("UUID")
     let userinfo = window.localStorage.getItem("userInfo")
@@ -362,7 +366,7 @@ export default {
     return postDataForRefresh('/api/customer/getCustomerCommentReplys', params)
   },
   getSearchVideos(params) { //根据分类获取视频列表
-    return postData('/api/Video/getSearchVideos', params)
+    return postDataWithNoToken('/api/Video/getSearchVideos', params)
   },
   getWorkRoom(params) { //获取工作室具体详情
     return postData('v2/LivingStream/GetWorkRoom', params)
@@ -389,7 +393,7 @@ export default {
     return postData('/api/v2/LivingStream/GetWorkRoomDynamics', params)
   },
   getSubjects(params) { //获取找医生中医科分类
-    return postData('/api/WorkRoom/GetSubjects', params)
+    return postDataWithNoToken('/api/WorkRoom/GetSubjects', params)
   },
   getSubjectsNew(params) { //获取找医生中医科分类, 新接口
     return postData('/api/WorkRoom/GetSubjectsNew', params)
@@ -452,10 +456,10 @@ export default {
     return postData('/api/Community/Praise', params)
   },
   wechatcodelogin(params) { //验证秘钥
-    return postDataForLoginIn('/api/user/wechatcodelogin', params)
+    return postDataWithNoToken('/api/user/wechatcodelogin', params)
   },
   getwechatjssignature(params) { //提交验证秘钥
-    return postData('/api/user/getwechatjssignature', params)
+    return postDataWithNoToken('/api/user/getwechatjssignature', params)
   },
   CollectVideo(params) { //收藏
     return postData('/api/Community/Collect', params)

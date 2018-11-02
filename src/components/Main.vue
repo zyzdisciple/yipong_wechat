@@ -1,4 +1,3 @@
-
 <template>
     <div class="foot-tab">
         <div class="page-tab-container" ref="wrapper" :style="{ height: wrapperHeight + 'px' }">
@@ -42,9 +41,7 @@
 </template>
 
 <script>
-import VideoList from '@/components/VideoList'
-import {subscribe} from "../utils/WXPay";
-
+import VideoList from '@/components/VideoList';
 export default {
     data() {
         return {
@@ -55,16 +52,13 @@ export default {
     components: {
         VideoList
     },
+    computed: {
+      IsCertificate() {
+          return this.$store.state.IsCertificate;
+      }
+    },
 
     mounted() {
-        // 判断当前进入人员的类型
-        this.utils.hasUserInfo().then(() => {
-          this.api.myStatus({}).then( res => {
-            this.IsCertificate = res.Data.IsCertificate;
-          });
-        }, () => {
-          this.IsCertificate = false;
-        })
     },
     methods: {
         videoHome() {

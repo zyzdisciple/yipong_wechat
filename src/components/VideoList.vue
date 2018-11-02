@@ -63,7 +63,7 @@
 <script>
 import VideoItem from '@/components/video/VideoItem';
 import LiveItem from '@/components/livelist/LiveItem';
-import { setStore, getStore } from '../store/mlocalstorge';
+import {setStore, getStore} from '../store/mlocalstorge';
 
 var maxLength = 0;
 var timeOut;

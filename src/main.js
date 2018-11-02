@@ -29,6 +29,7 @@ Vue.use(VueResource);
 /* eslint-disable no-new */
 //判断是第几次进入
 sessionStorage.getItem("isFirst") ? "" : sessionStorage.setItem("isFirst", true);
+
 //监听分享
 let currentUrl = window.location.href;
 if (currentUrl.indexOf("?url=") != -1) {
@@ -96,6 +97,10 @@ if (currentUrl.indexOf("?url=") != -1) {
                   window.localStorage.setItem('userInfo', JSON.stringify(res.Data));
                   sessionStorage.setItem("userInfo", JSON.stringify(res.Data));
                 })
+                // 判断当前进入人员的类型
+                api.myStatus({}).then( res => {
+                  store.state.IsCertificate = res.Data.IsCertificate;
+                });
               } else {
                 window.localStorage.setItem('userInfo', JSON.stringify({}));
                 window.localStorage.removeItem("token");

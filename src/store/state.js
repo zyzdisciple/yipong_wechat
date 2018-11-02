@@ -108,4 +108,5 @@ export default {
   reloadUserInfo: false,
   payAttention: false,
   exclusionToPop: false,
+  IsCertificate: false,
 }
