@@ -27,7 +27,8 @@ axios.interceptors.response.use((res) => {
   if (error.response.status == 401 && store.state.getUserInfoTimes < 3 && sessionStorage.getItem("hasRedirect") === "true") {
     store.state.getUserInfoTimes++;
   } else if (store.state.getUserInfoTimes >= 3) {
-    alert("你的个人信息已失效,请退出重新进入!");
+    //TODO
+    //将来要处理， 用户失效问题， 就在这里处理
   }
   return Promise.reject(error);
 });
@@ -131,10 +132,6 @@ export function postBase(url, data) {
 }
 //post方法
 export function postData(url, data) {
-  if (!(sessionStorage.getItem("isFirst") === "true")) {
-      window.localStorage.removeItem('userInfo');
-      window.localStorage.removeItem('token');
-  }
   return new Promise((resolve, reject) => {
     Indicator.open();
     let uuid = window.localStorage.getItem("UUID")
@@ -230,7 +227,7 @@ export function   postDataForRefresh(url, data) {
 }
 
 //loginIn接口单独调用, 不能传递 token;
-export function   postDataWithNoToken(url, data) {
+export function postDataWithNoToken(url, data) {
   return new Promise((resolve, reject) => {
     let uuid = window.localStorage.getItem("UUID")
     let userinfo = window.localStorage.getItem("userInfo")

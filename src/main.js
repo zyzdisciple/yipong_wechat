@@ -28,7 +28,9 @@ Vue.use(constant);
 Vue.use(VueResource);
 /* eslint-disable no-new */
 //判断是第几次进入
-sessionStorage.getItem("isFirst") ? "" : sessionStorage.setItem("isFirst", true);
+if (sessionStorage.getItem("isFirst") !== "true") {
+  sessionStorage.setItem("isFirst", true);
+}
 
 //监听分享
 let currentUrl = window.location.href;
