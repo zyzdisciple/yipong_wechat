@@ -320,7 +320,7 @@ export default {
         });
         this.scrollStyle.height = document.documentElement.clientHeight - 80 - 2 - 55 + 'px';
         this.$store.state.shareData.title = "医邦视频";
-        this.$store.state.shareData.description = "专业的医学类视频";
+        this.$store.state.shareData.description = "专业的医学健康视频";
     },
     beforeDestroy() {
         this.$store.state.shareData.title = "";

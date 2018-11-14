@@ -101,7 +101,7 @@
         </div>
       </div>
     </div>
-    <div class="mint-msgbox-wrapper" v-show="liveApply">
+    <div class="mint-msgbox-wrapper apply" v-show="liveApply">
       <div class="mint-msgbox">
         <div class="mint-msgbox-header">
           <img src="../../images/zfimg.png" style="width: 50%;">
@@ -128,7 +128,7 @@
         </div>
       </div>
     </div>
-    <div class="mint-msgbox-wrapper" v-show="replayApply">
+    <div class="mint-msgbox-wrapper apply" v-show="replayApply">
       <div class="mint-msgbox">
         <div class="mint-msgbox-header">
           <img src="../../images/zfimg.png" style="width: 50%;">
@@ -155,6 +155,35 @@
         </div>
       </div>
     </div>
+    <div  v-if="showSecretInput" class="mint-msgbox-wrapper secret">
+      <div class="mint-msgbox" style=""><div class="mint-msgbox-header">
+        <div class="mint-msgbox-title">请输入直播秘钥</div>
+      </div>
+        <div class="mint-msgbox-content">
+          <div class="mint-msgbox-message"> </div>
+          <div class="mint-msgbox-input" style="">
+            <input class="secret-message" v-model="secretMessage"/>
+            <a class="secret-forget" @click="openCallWindowF()">忘记秘钥？</a>
+            <div class="mint-msgbox-errormsg" style="visibility: hidden;"></div>
+          </div>
+        </div>
+        <div class="mint-msgbox-btns">
+          <button class="mint-msgbox-btn mint-msgbox-cancel" @click="hideSecretWindow()">取消</button>
+          <button class="mint-msgbox-btn mint-msgbox-confirm" @click="verifySecret()">确定</button>
+        </div>
+      </div>
+    </div>
+    <div  v-if="openCallWindow" class="mint-msgbox-wrapper secret">
+      <div class="mint-msgbox" style=""><div class="mint-msgbox-header">
+        <div class="mint-msgbox-title">4008867170</div>
+      </div>
+        <div class="mint-msgbox-btns">
+          <button class="mint-msgbox-btn mint-msgbox-cancel" @click="openCallWindow = false">取消</button>
+          <a href="tel://4008867170" class="mint-msgbox-btn mint-msgbox-confirm" @click="openCallWindow = false">呼叫</a>
+        </div>
+      </div>
+    </div>
+    <div class="v-modal" v-if="showSecretInput || openCallWindow" style="z-index: 3;"></div>
   </div>
 </template>
 <script>
@@ -188,6 +217,9 @@
         init: false,
         scrollStyle: {},
         noScrollDom: null,
+        showSecretInput: false,
+        secretMessage: "",
+        openCallWindow: false,
       }
     },
     props: {
@@ -264,12 +296,12 @@
               Toast("请在app端观看直播.");
               return;
             }
-            //关注相关
-            /*let subscribe = this.payAttention(this.liveInfo);
-            if (!subscribe) {
-              return;
-            }*/
-            this.$router.push({path: '/live/' + this.$route.params.LiveID});
+            //加密直播， 需要输入秘钥
+            if (this.liveInfo.LiveStreamModeId == "1" || this.liveInfo.LiveStreamModeId == "2") {
+              this.showSecretInput = true;
+            } else {
+              this.$router.push({path: '/live/' + this.$route.params.LiveID});
+            }
           }
         } else {
           Toast("直播已禁用");
@@ -277,11 +309,6 @@
       },
       // 回看播放
       LiveReplay() {
-        //关注相关
-        /*let subscribe = this.payAttention(this.liveInfo);
-        if (!subscribe) {
-          return;
-        }*/
         if (this.liveInfo.LiveStreamStateId == 2 && !this.liveInfo.NetEaseUrl) {
           Toast("直播不存在");
         } else if (this.liveInfo.LiveStreamVideoExpense <= 0 || this.payInfo.IsPayLsVideoExpense) {
@@ -296,6 +323,22 @@
         } else {
           this.replayApply = true;
         }
+      },
+      verifySecret() {
+        this.api.verifySecrectKey({LiveId: this.$route.params.LiveID, SecretKey:this.secretMessage.trim(),}).then(res => {
+          if (res.Data.IsSucceed) {
+            this.$router.push({path: '/live/' + this.$route.params.LiveID});
+          }else {
+            Toast("秘钥不匹配!");
+          }
+          this.hideSecretWindow();
+        }, error => {
+          Toast("秘钥不匹配!");
+          this.hideSecretWindow();
+        });
+      },
+      hideSecretWindow() {
+        this.showSecretInput = false;
       },
       // 跳转到支付页面
       signUp(amount, liveID, title) {
@@ -493,6 +536,10 @@
             }
         }
         return false;
+      },
+      openCallWindowF() {
+          this.showSecretInput = false;
+          this.openCallWindow = true;
       }
     },
     mounted() {
@@ -602,7 +649,7 @@
     }
   }
 
-  .mint-msgbox-wrapper {
+  .mint-msgbox-wrapper.apply{
     overflow: hidden;
     background: rgba(0, 0, 0, 0.8);
     width: 100%;
@@ -631,4 +678,22 @@
       border: none;
     }
   }
+
+.mint-msgbox-wrapper.secret {
+  position: absolute; z-index: 4;
+  .secret-message {
+    width: 100%;
+    height: 25px;
+    border: gray 1px solid;
+    border-radius: 5px;
+  }
+  .secret-forget {
+    font-size: 1.5rem;
+    position: absolute;
+    bottom: 0px;
+    right: 0px;
+    color: dodgerblue;
+  }
+}
+
 </style>

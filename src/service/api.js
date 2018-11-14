@@ -1,6 +1,7 @@
 import axios from "axios";
-import {Indicator} from "mint-ui";
+import {Indicator, MessageBox} from "mint-ui";
 import store from "../store";
+import * as constant from "../configs/constant";
 
 // axios 配置
 axios.defaults.timeout = 100000;
@@ -25,13 +26,34 @@ axios.interceptors.response.use((res) => {
   if (error.response) {
   }
   if (error.response.status == 401 && store.state.getUserInfoTimes < 3 && sessionStorage.getItem("hasRedirect") === "true") {
-    store.state.getUserInfoTimes++;
-  } else if (store.state.getUserInfoTimes >= 3) {
-    //TODO
-    //将来要处理， 用户失效问题， 就在这里处理
+    MessageBox.confirm('需重新获取用户信息才能进行更多操作').then(action => {
+      sessionStorage.removeItem("hasRedirect");
+      let userInfo = localStorage.getItem("userInfo");
+      try {
+        userInfo = JSON.parse(userInfo);
+        delete userInfo.Token;
+      } catch (error) {
+        userInfo = {};
+      }
+      localStorage.setItem("userInfo", userInfo);
+      location.href = constant.urlhost + "#/";
+    });
   }
   return Promise.reject(error);
 });
+
+let secData = {
+  "app_from": "web app",
+  "app_id": "1",
+  "app_version": "1.0.20",
+  "device_name": "web",
+  "device_type": "web_app",
+  "identify_key": window.localStorage.getItem("UUID"),
+  "language": "zh",
+  "network_type": "2",
+  "record": "1",
+  "version": 6.0,
+}
 
 //get方法
 export function getData(url, params) {
@@ -56,7 +78,6 @@ export function getData(url, params) {
 export function postUpload(url, data) {
   return new Promise((resolve, reject) => {
     Indicator.open();
-    let uuid = window.localStorage.getItem("UUID")
     let userinfo = window.localStorage.getItem("userInfo")
     let info = null;
     try {
@@ -68,18 +89,7 @@ export function postUpload(url, data) {
     if (data == undefined) {
       data = {};
     }
-    data.secData = {
-      "app_from": "web app",
-      "app_id": "1",
-      "app_version": "1.0.20",
-      "device_name": "web",
-      "device_type": "web_app",
-      "identify_key": uuid,
-      "language": "zh",
-      "network_type": "2",
-      "record": "1",
-      "version": 6.0,
-    }
+    data.secData = secData;
     if (info) {
       data.secData["token"] = info.Token
       data.secData["user_id"] = info.UserId
@@ -134,7 +144,6 @@ export function postBase(url, data) {
 export function postData(url, data) {
   return new Promise((resolve, reject) => {
     Indicator.open();
-    let uuid = window.localStorage.getItem("UUID")
     let userinfo = window.localStorage.getItem("userInfo")
     let info = null;
     try {
@@ -142,18 +151,7 @@ export function postData(url, data) {
     } catch (error) {
       info = userinfo;
     }
-    data.secData = {
-      "app_from": "web app",
-      "app_id": "1",
-      "app_version": "1.0.20",
-      "device_name": "web",
-      "device_type": "web_app",
-      "identify_key": uuid,
-      "language": "zh",
-      "network_type": "2",
-      "record": "1",
-      "version": 6.0,
-    }
+    data.secData = secData;
     if (info) {
       data.secData["token"] = info.Token
       data.secData["user_id"] = info.UserId
@@ -182,7 +180,6 @@ export function postData(url, data) {
 //频繁请求的post方法
 export function   postDataForRefresh(url, data) {
   return new Promise((resolve, reject) => {
-    let uuid = window.localStorage.getItem("UUID")
     let userinfo = window.localStorage.getItem("userInfo")
     let info = null;
     try {
@@ -191,18 +188,7 @@ export function   postDataForRefresh(url, data) {
       info = userinfo;
     }
 
-    data.secData = {
-      "app_from": "web app",
-      "app_id": "1",
-      "app_version": "1.0.20",
-      "device_name": "web",
-      "device_type": "web_app",
-      "identify_key": uuid,
-      "language": "zh",
-      "network_type": "2",
-      "record": "1",
-      "version": 6.0,
-    }
+    data.secData = secData;
     if (info) {
       data.secData["token"] = info.Token
       data.secData["user_id"] = info.UserId
@@ -229,7 +215,6 @@ export function   postDataForRefresh(url, data) {
 //loginIn接口单独调用, 不能传递 token;
 export function postDataWithNoToken(url, data) {
   return new Promise((resolve, reject) => {
-    let uuid = window.localStorage.getItem("UUID")
     let userinfo = window.localStorage.getItem("userInfo")
     let info = null;
     try {
@@ -238,18 +223,7 @@ export function postDataWithNoToken(url, data) {
       info = userinfo;
     }
 
-    data.secData = {
-      "app_from": "web app",
-      "app_id": "1",
-      "app_version": "1.0.20",
-      "device_name": "web",
-      "device_type": "web_app",
-      "identify_key": uuid,
-      "language": "zh",
-      "network_type": "2",
-      "record": "1",
-      "version": 6.0,
-    }
+    data.secData = secData;
     if (info) {
       data.secData["user_id"] = info.UserId
     }
@@ -271,8 +245,6 @@ export function postDataWithNoToken(url, data) {
       })
   })
 }
-
-
 
 export default {
   basicDatas(params) { //获取基础数据
@@ -536,7 +508,7 @@ export default {
   getRegisted(params) {//APP、H5获取当前第三方登陆是否已使用手机号注册
     return postDataForRefresh('/api/user/getregisted', params)
   },
-  weHealthH5Code(params) {//获取微健康详情HTML代码
-    return postData('/api/userhome/sciencearticledetail', params)
+  verifySecrectKey(params) {//获取微健康详情HTML代码
+    return postData('/api/LivingStream/VerifySecretKey', params)
   },
 }

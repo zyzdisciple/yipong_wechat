@@ -82,7 +82,6 @@ if (currentUrl.indexOf("?url=") != -1) {
               if (res.Data != null && res.Data.Token) {
                 store.state.isSubscribe = res.Data.Subscribe;
                 window.localStorage.setItem('userInfo', JSON.stringify(res.Data));
-                window.localStorage.setItem('token', JSON.stringify(res.Data.Token));
                 //更新用户信息的头像信息
                 api.getRegisted({}).then(res => {
                   if (res.Data) {
